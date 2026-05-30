@@ -13,6 +13,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useJobResult, useJobStatus, useRegenerate, useUpdateResult } from '@/api/ai';
 import { Button } from '@/ui/components/Button';
 import { TextInput } from '@/ui/components/TextInput';
+import { SmartStoreMetaCard } from '@/screens/content/SmartStoreMetaCard';
 import { ContentStepper } from '@/screens/content/Stepper';
 import { colors, radius, shadow, space, typography } from '@/ui/tokens';
 import { toast } from '@/state/uiStore';
@@ -185,6 +186,10 @@ export default function ContentDetailScreen() {
                   <Text style={styles.tags}>{(result.data?.hashtags ?? []).join(' ')}</Text>
                 </View>
               </>
+            ) : null}
+
+            {result.data?.platform === 'SMARTSTORE' && result.data?.storeMeta ? (
+              <SmartStoreMetaCard meta={result.data.storeMeta} />
             ) : null}
 
             <View style={styles.actionRow}>

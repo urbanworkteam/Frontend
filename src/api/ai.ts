@@ -23,11 +23,21 @@ export type JobStatusResponse = {
   failureReason: string | null;
 };
 
+export type StoreMeta = {
+  brix: string | null;
+  harvestPolicy: string | null;
+  farmingYears: string | null;
+  reasonsToBuy: string[] | null;
+  productInfo: Record<string, string> | null;
+  price: number | null;
+};
+
 export type ContentResult = {
   platform: Platform;
   cardImageUrls: string[];
   caption: string | null;
   hashtags: string[];
+  storeMeta: StoreMeta | null;
 };
 
 export type HistoryItem = {
