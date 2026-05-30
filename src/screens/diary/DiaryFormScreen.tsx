@@ -79,6 +79,22 @@ export function DiaryFormScreen({ mode, diaryId, initialDate, initialData, onDel
   const [cropId, setCropId] = useState<number | null>(initialData?.crop?.id ?? null);
   const initialSource = (initialData?.weather?.source as Source | 'KMA' | undefined) ?? 'AUTO';
   const [source, setSource] = useState<Source>(initialSource === 'MANUAL' ? 'MANUAL' : 'AUTO');
+  // 수동 입력 모드용 날씨 필드. AUTO 일 때는 useWeather 응답이 채워짐.
+  const [manualMain, setManualMain] = useState<string>(initialData?.weather?.main ?? '');
+  const [manualTempMax, setManualTempMax] = useState<string>(
+    initialData?.weather?.tempMax != null ? String(initialData.weather.tempMax) : '',
+  );
+  const [manualTempMin, setManualTempMin] = useState<string>(
+    initialData?.weather?.tempMin != null ? String(initialData.weather.tempMin) : '',
+  );
+  const [manualPrecip, setManualPrecip] = useState<string>(
+    initialData?.weather?.precipitationMm != null
+      ? String(initialData.weather.precipitationMm)
+      : '',
+  );
+  const [manualHumidity, setManualHumidity] = useState<string>(
+    initialData?.weather?.humidityPct != null ? String(initialData.weather.humidityPct) : '',
+  );
   const [memo, setMemo] = useState<string>(initialData?.memo ?? '');
   const [photos, setPhotos] = useState<PhotoSlot[]>(
     initialData?.photos.map((p) => ({ key: urlToKey(p.url), previewUrl: p.url })) ?? [],
@@ -120,12 +136,11 @@ export function DiaryFormScreen({ mode, diaryId, initialDate, initialData, onDel
         ? { source: 'AUTO' as const }
         : {
             source: 'MANUAL' as const,
-            main: w?.main ?? initialData?.weather?.main ?? null,
-            tempMax: w?.tempMax ?? initialData?.weather?.tempMax ?? null,
-            tempMin: w?.tempMin ?? initialData?.weather?.tempMin ?? null,
-            precipitationMm:
-              w?.precipitationMm ?? initialData?.weather?.precipitationMm ?? null,
-            humidityPct: w?.humidityPct ?? initialData?.weather?.humidityPct ?? null,
+            main: manualMain.trim() || null,
+            tempMax: manualTempMax.trim() ? Number(manualTempMax) : null,
+            tempMin: manualTempMin.trim() ? Number(manualTempMin) : null,
+            precipitationMm: manualPrecip.trim() ? Number(manualPrecip) : null,
+            humidityPct: manualHumidity.trim() ? Math.round(Number(manualHumidity)) : null,
           },
     workBlocks: workBlocks.map((b) => ({ workType: b.workType, detail: b.detail || null })),
     memo: memo || null,
@@ -286,7 +301,7 @@ export function DiaryFormScreen({ mode, diaryId, initialDate, initialData, onDel
               <View style={styles.weatherCardTopRow}>
                 <Text style={styles.weatherIcon}>☀️</Text>
                 <View style={{ flex: 1, marginLeft: space.sm }}>
-                  {displayWeather ? (
+                  {source === 'AUTO' && displayWeather ? (
                     <>
                       <Text style={styles.weatherMain}>
                         {displayWeather.main ?? '-'} · 최고 {displayWeather.tempMax ?? '-'}° 최저{' '}
@@ -297,11 +312,13 @@ export function DiaryFormScreen({ mode, diaryId, initialDate, initialData, onDel
                         {displayWeather.humidityPct ?? '-'}%
                       </Text>
                     </>
-                  ) : (
+                  ) : source === 'AUTO' ? (
                     <Text style={styles.weatherSub}>날씨 정보 불러오는 중...</Text>
+                  ) : (
+                    <Text style={styles.weatherSub}>아래에 직접 입력해주세요</Text>
                   )}
                 </View>
-                {weather.isFetching ? <ActivityIndicator /> : null}
+                {source === 'AUTO' && weather.isFetching ? <ActivityIndicator /> : null}
                 <Pressable
                   style={[
                     styles.sourceBadge,
@@ -309,9 +326,63 @@ export function DiaryFormScreen({ mode, diaryId, initialDate, initialData, onDel
                   ]}
                   onPress={() => setSource(source === 'AUTO' ? 'MANUAL' : 'AUTO')}
                 >
-                  <Text style={styles.sourceBadgeText}>{source === 'AUTO' ? '자동 입력' : '수동'}</Text>
+                  <Text style={styles.sourceBadgeText}>
+                    {source === 'AUTO' ? '자동 입력' : '✎ 수동 입력'}
+                  </Text>
                 </Pressable>
               </View>
+
+              {source === 'MANUAL' ? (
+                <View style={styles.weatherManualBox}>
+                  <TextInput
+                    label="날씨 한 줄"
+                    value={manualMain}
+                    onChangeText={setManualMain}
+                    placeholder="맑음 / 흐림 / 비"
+                    maxLength={20}
+                  />
+                  <View style={styles.weatherManualRow}>
+                    <View style={{ flex: 1 }}>
+                      <TextInput
+                        label="최고 (°C)"
+                        value={manualTempMax}
+                        onChangeText={setManualTempMax}
+                        placeholder="24"
+                        keyboardType="numeric"
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <TextInput
+                        label="최저 (°C)"
+                        value={manualTempMin}
+                        onChangeText={setManualTempMin}
+                        placeholder="12"
+                        keyboardType="numeric"
+                      />
+                    </View>
+                  </View>
+                  <View style={styles.weatherManualRow}>
+                    <View style={{ flex: 1 }}>
+                      <TextInput
+                        label="강수량 (mm)"
+                        value={manualPrecip}
+                        onChangeText={setManualPrecip}
+                        placeholder="0"
+                        keyboardType="numeric"
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <TextInput
+                        label="습도 (%)"
+                        value={manualHumidity}
+                        onChangeText={setManualHumidity}
+                        placeholder="45"
+                        keyboardType="numeric"
+                      />
+                    </View>
+                  </View>
+                </View>
+              ) : null}
             </View>
           </Field>
 
@@ -323,6 +394,13 @@ export function DiaryFormScreen({ mode, diaryId, initialDate, initialData, onDel
               labelOf={(c) => c.name}
               colorOf={(c) => c.colorHex}
             />
+            <Pressable onPress={() => router.push('/(tabs)/mypage/crops')} hitSlop={4}>
+              <Text style={styles.helperLink}>
+                {(crops.data?.length ?? 0) === 0
+                  ? '+ 작물을 먼저 등록해주세요 (마이페이지 → 재배 작물 관리)'
+                  : '+ 다른 작물 추가하기 (마이페이지)'}
+              </Text>
+            </Pressable>
           </Field>
 
           <Field label={`작업 내용 * (${workBlocks.length})`}>
@@ -514,6 +592,13 @@ function WorkTypeSheet({
       cancelLabel="취소"
     >
       <View style={{ gap: space.sm, marginVertical: space.md }}>
+        {types.length === 0 ? (
+          <View style={sheetStyles.emptyBox}>
+            <Text style={sheetStyles.emptyText}>
+              작업 유형을 불러오지 못했어요.{'\n'}네트워크 또는 로그인 상태를 확인하고 다시 시도해주세요.
+            </Text>
+          </View>
+        ) : null}
         {types.map((t) => {
           const sel = picked.includes(t.code);
           const already = existing.includes(t.code);
@@ -666,6 +751,21 @@ const styles = StyleSheet.create({
   },
   photoAddIcon: { fontSize: 28, color: colors.textSecondary, lineHeight: 32 },
   photoAddText: { ...typography.caption, color: colors.textSecondary },
+
+  weatherManualBox: {
+    marginTop: space.md,
+    paddingTop: space.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: space.sm,
+  },
+  weatherManualRow: { flexDirection: 'row', gap: space.sm },
+  helperLink: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '600',
+    marginTop: space.xs,
+  },
 });
 
 const fieldStyles = StyleSheet.create({
@@ -722,4 +822,13 @@ const sheetStyles = StyleSheet.create({
   },
   pickedChipText: { ...typography.caption, color: colors.primary, fontWeight: '600' },
   pickedChipX: { color: colors.primary, fontSize: 14, fontWeight: '700' },
+  emptyBox: {
+    padding: space.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceMuted,
+    alignItems: 'center',
+  },
+  emptyText: { ...typography.body, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
 });
