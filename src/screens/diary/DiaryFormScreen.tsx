@@ -492,6 +492,9 @@ export function DiaryFormScreen({ mode, diaryId, initialDate, initialData, onDel
       <WorkTypeSheet
         visible={showSheet}
         types={types.data ?? []}
+        isLoading={types.isLoading}
+        isError={types.isError}
+        onRetry={() => types.refetch()}
         existing={workBlocks.map((b) => b.workType)}
         onConfirm={confirmWorkTypes}
         onClose={() => setShowSheet(false)}
@@ -563,12 +566,18 @@ function ChipRow<T extends { id: number }>({
 function WorkTypeSheet({
   visible,
   types,
+  isLoading,
+  isError,
+  onRetry,
   existing,
   onConfirm,
   onClose,
 }: {
   visible: boolean;
   types: { code: string; label: string; icon: string }[];
+  isLoading: boolean;
+  isError: boolean;
+  onRetry: () => void;
   existing: string[];
   onConfirm: (codes: string[]) => void;
   onClose: () => void;
@@ -577,6 +586,13 @@ function WorkTypeSheet({
 
   useEffect(() => {
     if (visible) setPicked([]);
+  }, [visible]);
+
+  // 모달 열릴 때 자동 refetch — 토큰 hydrate 직후 첫 호출 실패한 케이스 자동 복구
+  useEffect(() => {
+    if (visible && types.length === 0 && !isLoading) {
+      onRetry();
+    }
   }, [visible]);
 
   const toggle = (code: string) =>
@@ -592,11 +608,24 @@ function WorkTypeSheet({
       cancelLabel="취소"
     >
       <View style={{ gap: space.sm, marginVertical: space.md }}>
-        {types.length === 0 ? (
+        {isLoading && types.length === 0 ? (
+          <View style={sheetStyles.emptyBox}>
+            <ActivityIndicator color={colors.primary} />
+            <Text style={[sheetStyles.emptyText, { marginTop: space.sm }]}>
+              작업 유형을 불러오는 중...
+            </Text>
+          </View>
+        ) : null}
+        {!isLoading && types.length === 0 ? (
           <View style={sheetStyles.emptyBox}>
             <Text style={sheetStyles.emptyText}>
-              작업 유형을 불러오지 못했어요.{'\n'}네트워크 또는 로그인 상태를 확인하고 다시 시도해주세요.
+              {isError
+                ? '작업 유형을 불러오지 못했어요. 네트워크 또는 로그인 상태를 확인해주세요.'
+                : '작업 유형이 비어 있어요.'}
             </Text>
+            <Pressable style={sheetStyles.retryBtn} onPress={onRetry} hitSlop={4}>
+              <Text style={sheetStyles.retryBtnText}>↻ 다시 불러오기</Text>
+            </Pressable>
           </View>
         ) : null}
         {types.map((t) => {
@@ -831,4 +860,14 @@ const sheetStyles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: { ...typography.body, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
+  retryBtn: {
+    marginTop: space.md,
+    paddingVertical: space.xs,
+    paddingHorizontal: space.md,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: '#E6F4EA',
+  },
+  retryBtnText: { ...typography.bodyBold, color: colors.primary },
 });

@@ -77,9 +77,12 @@ export function useDiariesByDate(date: string | null, enabled: boolean) {
 }
 
 export function useWorkTypes() {
+  // staleTime: Infinity 였던 게 첫 호출 실패 시 영영 lock 되는 문제.
+  // 1시간으로 줄이고 retry 2회 — 토큰 hydrate 직후 401 받았어도 자연스럽게 복구.
   return useQuery({
     queryKey: ['work-types'],
-    staleTime: Infinity,
+    staleTime: 60 * 60_000,
+    retry: 2,
     queryFn: async () => {
       const res = await api.get<ApiResponse<WorkTypeMeta[]>>('/api/v1/diaries/work-types');
       return unwrap(Promise.resolve(res));
