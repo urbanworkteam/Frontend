@@ -6,7 +6,14 @@ export type MyPageData = {
   account: { name: string | null; phone: string | null; email: string | null };
   crops: { count: number; preview: string[] };
   farmLocations: { count: number };
-  subscription: { plan: string; creditsUsed: number; creditsLimit: number; resetAt: string };
+  subscription: {
+    plan: string;
+    creditsUsed: number;
+    creditsLimit: number;
+    resetAt: string;
+    lastPaidAt: string | null;
+    nextBillingAt: string | null;
+  };
 };
 
 export function useMyPage() {
