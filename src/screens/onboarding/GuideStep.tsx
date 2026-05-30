@@ -1,9 +1,7 @@
-import React, { useRef, useState } from 'react';
-import { Dimensions, NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/ui/components/Button';
 import { colors, radius, space, typography } from '@/ui/tokens';
-
-const { width: SW } = Dimensions.get('window');
 
 const PAGES = [
   {
@@ -25,46 +23,44 @@ const PAGES = [
 
 export function GuideStep({ onDone }: { onDone: () => void }) {
   const [page, setPage] = useState(0);
-  const scrollRef = useRef<ScrollView>(null);
-
-  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    setPage(Math.round(e.nativeEvent.contentOffset.x / SW));
-  };
+  const current = PAGES[page];
+  const isLast = page === PAGES.length - 1;
 
   const next = () => {
-    if (page < PAGES.length - 1) {
-      scrollRef.current?.scrollTo({ x: SW * (page + 1), animated: true });
-    } else {
-      onDone();
-    }
+    if (isLast) onDone();
+    else setPage(page + 1);
+  };
+
+  const prev = () => {
+    if (page > 0) setPage(page - 1);
   };
 
   return (
     <View style={styles.container}>
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={onScroll}
-      >
-        {PAGES.map((p, i) => (
-          <View key={i} style={[styles.page, { width: SW }]}>
-            <Text style={styles.emoji}>{p.emoji}</Text>
-            <Text style={styles.title}>{p.title}</Text>
-            <Text style={styles.desc}>{p.desc}</Text>
-          </View>
-        ))}
-      </ScrollView>
+      <View style={styles.page}>
+        <Text style={styles.emoji}>{current.emoji}</Text>
+        <Text style={styles.title}>{current.title}</Text>
+        <Text style={styles.desc}>{current.desc}</Text>
+      </View>
 
       <View style={styles.dots}>
         {PAGES.map((_, i) => (
-          <View key={i} style={[styles.dot, page === i && styles.dotActive]} />
+          <Pressable key={i} onPress={() => setPage(i)} hitSlop={8}>
+            <View style={[styles.dot, page === i && styles.dotActive]} />
+          </Pressable>
         ))}
       </View>
 
-      <View style={{ padding: space.xl }}>
-        <Button label={page === PAGES.length - 1 ? '시작하기' : '다음'} onPress={next} fullWidth />
+      <View style={styles.actions}>
+        {page > 0 ? (
+          <Button label="이전" variant="ghost" onPress={prev} style={{ flex: 1 }} />
+        ) : null}
+        <Button
+          label={isLast ? '시작하기' : '다음 →'}
+          onPress={next}
+          style={{ flex: page > 0 ? 2 : 1 }}
+          fullWidth
+        />
       </View>
     </View>
   );
@@ -72,11 +68,24 @@ export function GuideStep({ onDone }: { onDone: () => void }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bgPage },
-  page: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: space.xxl, gap: space.md },
+  page: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: space.xxl,
+    gap: space.md,
+  },
   emoji: { fontSize: 80 },
   title: { ...typography.header, color: colors.textPrimary, textAlign: 'center' },
-  desc: { ...typography.body, color: colors.textSecondary, textAlign: 'center', marginTop: space.sm },
+  desc: {
+    ...typography.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: space.sm,
+    paddingHorizontal: space.lg,
+  },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: space.sm, paddingVertical: space.md },
   dot: { width: 8, height: 8, borderRadius: radius.pill, backgroundColor: colors.border },
   dotActive: { backgroundColor: colors.primary, width: 20 },
+  actions: { flexDirection: 'row', gap: space.sm, padding: space.xl },
 });
