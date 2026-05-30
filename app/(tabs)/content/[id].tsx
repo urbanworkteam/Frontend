@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,9 +11,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import * as MediaLibrary from 'expo-media-library';
-import * as FileSystem from 'expo-file-system';
 import * as Clipboard from 'expo-clipboard';
+
+// expo-media-library / expo-file-system 은 웹에서 네이티브 모듈을 import 시점에
+// 찾으려다 throw 한다. 웹은 갤러리 저장 자체가 불가능하므로 native에서만 require.
+type MediaLibraryModule = typeof import('expo-media-library');
+type FileSystemModule = typeof import('expo-file-system');
+const MediaLibrary: MediaLibraryModule | null =
+  Platform.OS !== 'web' ? require('expo-media-library') : null;
+const FileSystem: FileSystemModule | null =
+  Platform.OS !== 'web' ? require('expo-file-system') : null;
 import {
   useJobResult,
   useJobStatus,
@@ -78,6 +86,10 @@ export default function ContentDetailScreen() {
 
   const saveAllImagesToGallery = async (urls: string[], kind: 'CARD' | 'STORE_IMAGE') => {
     if (!jobId || urls.length === 0) return;
+    if (!MediaLibrary || !FileSystem) {
+      toast.info('웹에서는 갤러리 저장이 지원되지 않아요. 디바이스에서 시도해주세요.');
+      return;
+    }
     const perm = await MediaLibrary.requestPermissionsAsync();
     if (perm.status !== 'granted') {
       toast.error('갤러리 권한이 필요해요');

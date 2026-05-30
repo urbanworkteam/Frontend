@@ -13,7 +13,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
-import DateTimePicker from '@react-native-community/datetimepicker';
+
+// DateTimePicker는 native-only 모듈. 웹에서는 import 자체가 native 모듈을 찾으려다 throw.
+type DateTimePickerComponent =
+  typeof import('@react-native-community/datetimepicker').default;
+const DateTimePicker: DateTimePickerComponent | null =
+  Platform.OS !== 'web'
+    ? require('@react-native-community/datetimepicker').default
+    : null;
 import { useCrops } from '@/api/crop';
 import { useFarmLocations } from '@/api/farmLocation';
 import { useWeather } from '@/api/weather';
@@ -240,18 +247,29 @@ export function DiaryFormScreen({ mode, diaryId, initialDate, initialData, onDel
           contentContainerStyle={{ padding: space.lg, gap: space.md, paddingBottom: space.xxl }}
         >
           <Field label="날짜 *">
-            <Pressable onPress={() => setShowDatePicker(true)} style={styles.dateField}>
-              <Text style={styles.dateText}>{formatKoreanDate(date)}</Text>
-              <Text style={styles.dateChevron}>›</Text>
-            </Pressable>
-            {showDatePicker ? (
-              <DateTimePicker
-                value={parseDate(date)}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={onDateChange}
+            {Platform.OS === 'web' ? (
+              <TextInput
+                value={date}
+                onChangeText={setDate}
+                placeholder="YYYY-MM-DD"
+                hint={formatKoreanDate(date)}
               />
-            ) : null}
+            ) : (
+              <>
+                <Pressable onPress={() => setShowDatePicker(true)} style={styles.dateField}>
+                  <Text style={styles.dateText}>{formatKoreanDate(date)}</Text>
+                  <Text style={styles.dateChevron}>›</Text>
+                </Pressable>
+                {showDatePicker && DateTimePicker ? (
+                  <DateTimePicker
+                    value={parseDate(date)}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={onDateChange}
+                  />
+                ) : null}
+              </>
+            )}
           </Field>
 
           <Field label="농장 위치">
