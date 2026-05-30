@@ -4,8 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { MonthCalendar } from '@/ui/components/MonthCalendar';
 import { useDiaryCalendar } from '@/api/diary';
+import { api, unwrap } from '@/api/client';
+import { ApiResponse } from '@/api/types';
+import { DiaryResponse } from '@/types/diary';
 import { Button } from '@/ui/components/Button';
 import { colors, radius, shadow, space, typography } from '@/ui/tokens';
+import { toast } from '@/state/uiStore';
 
 function todayStr() {
   const d = new Date();
@@ -19,7 +23,33 @@ export default function DiaryHome() {
     return { year: d.getFullYear(), month: d.getMonth() + 1 };
   });
   const [selected, setSelected] = useState<string>(today);
+  const [resolving, setResolving] = useState(false);
   const cal = useDiaryCalendar(ym.year, ym.month);
+
+  // 캘린더 응답에는 diary id가 없어 날짜 → id 조회를 별도 호출로 처리.
+  // /me/profile/calendar/{date} 가 동일 데이터에 id 포함해서 반환.
+  const goToDayDiary = async (date: string, hasDiary: boolean) => {
+    if (!hasDiary) {
+      router.push({ pathname: '/(tabs)/diary/write', params: { date } });
+      return;
+    }
+    setResolving(true);
+    try {
+      const res = await api.get<ApiResponse<DiaryResponse[]>>(
+        `/api/v1/me/profile/calendar/${date}`,
+      );
+      const list = await unwrap(Promise.resolve(res));
+      if (list.length > 0) {
+        router.push({ pathname: '/(tabs)/diary/[id]', params: { id: String(list[0].id) } });
+      } else {
+        router.push({ pathname: '/(tabs)/diary/write', params: { date } });
+      }
+    } catch (e) {
+      toast.error((e as Error).message ?? '일지를 여는 데 실패했어요');
+    } finally {
+      setResolving(false);
+    }
+  };
 
   const tagsByDate = useMemo(() => {
     const m: Record<string, { color: string }[]> = {};
@@ -73,7 +103,8 @@ export default function DiaryHome() {
           <Button
             label={selectedDay && selectedDay.tags.length > 0 ? '이 날 일지 보기' : '이 날 일지 작성'}
             variant="secondary"
-            onPress={() => router.push({ pathname: '/(tabs)/diary/write', params: { date: selected } })}
+            loading={resolving}
+            onPress={() => goToDayDiary(selected, !!(selectedDay && selectedDay.tags.length > 0))}
             fullWidth
           />
         </View>
