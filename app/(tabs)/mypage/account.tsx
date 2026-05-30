@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { safeBack } from '@/lib/nav';
 import { useMyPage, useUpdateAccount } from '@/api/mypage';
 import { Button } from '@/ui/components/Button';
 import { TextInput } from '@/ui/components/TextInput';
@@ -26,7 +27,7 @@ export default function AccountEditScreen() {
       {
         onSuccess: () => {
           toast.success('저장되었습니다');
-          router.back();
+          safeBack('/(tabs)/mypage');
         },
         onError: (e) => toast.error((e as Error).message),
       },
@@ -35,7 +36,7 @@ export default function AccountEditScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()}><Text style={styles.back}>← 취소</Text></Pressable>
+        <Pressable onPress={() => safeBack('/(tabs)/mypage')}><Text style={styles.back}>← 취소</Text></Pressable>
         <Text style={styles.title}>계정 정보</Text>
         <Pressable onPress={save}><Text style={styles.submit}>저장</Text></Pressable>
       </View>

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { safeBack } from '@/lib/nav';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 
@@ -161,7 +162,7 @@ export function DiaryFormScreen({ mode, diaryId, initialDate, initialData, onDel
         {
           onSuccess: () => {
             toast.success('일지를 수정했어요');
-            router.back();
+            safeBack('/(tabs)/diary');
           },
           onError: handleSubmitError,
         },
@@ -238,7 +239,7 @@ export function DiaryFormScreen({ mode, diaryId, initialDate, initialData, onDel
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
+        <Pressable onPress={() => safeBack('/(tabs)/diary')} hitSlop={12}>
           <Text style={styles.back}>← 취소</Text>
         </Pressable>
         <Text style={styles.headerTitle}>{isEdit ? '일지 편집' : '일지 작성'}</Text>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { safeBack } from '@/lib/nav';
 import { useFarmLocations, useCreateFarmLocation, useDeleteFarmLocation } from '@/api/farmLocation';
 import { Button } from '@/ui/components/Button';
 import { TextInput } from '@/ui/components/TextInput';
@@ -33,7 +34,7 @@ export default function LocationsManageScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()}><Text style={styles.back}>← 뒤로</Text></Pressable>
+        <Pressable onPress={() => safeBack('/(tabs)/mypage')}><Text style={styles.back}>← 뒤로</Text></Pressable>
         <Text style={styles.title}>농장 위치</Text>
         <View style={{ width: 50 }} />
       </View>
