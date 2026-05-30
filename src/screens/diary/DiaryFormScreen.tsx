@@ -12,6 +12,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { Image } from 'expo-image';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useCrops } from '@/api/crop';
 import { useFarmLocations } from '@/api/farmLocation';
 import { useWeather } from '@/api/weather';
@@ -20,7 +22,7 @@ import { extOf, uploadToS3, usePresign } from '@/api/upload';
 import { Button } from '@/ui/components/Button';
 import { TextInput } from '@/ui/components/TextInput';
 import { Modal } from '@/ui/components/Modal';
-import { colors, radius, shadow, space, typography } from '@/ui/tokens';
+import { colors, radius, space, typography } from '@/ui/tokens';
 import { toast } from '@/state/uiStore';
 import { DiaryResponse } from '@/types/diary';
 
@@ -29,8 +31,17 @@ function todayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-// Backend returns the photo as a full CDN URL; PATCH expects the S3 key.
-// We recover the key from the URL pathname so existing photos survive an edit.
+function parseDate(s: string): Date {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
+const KOR_DOW = ['일', '월', '화', '수', '목', '금', '토'];
+function formatKoreanDate(s: string): string {
+  const d = parseDate(s);
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${KOR_DOW[d.getDay()]}요일`;
+}
+
 function urlToKey(url: string): string {
   try {
     return new URL(url).pathname.replace(/^\//, '');
@@ -54,6 +65,7 @@ export function DiaryFormScreen({ mode, diaryId, initialDate, initialData, onDel
   const isEdit = mode === 'edit';
 
   const [date, setDate] = useState(initialData?.date ?? initialDate ?? todayStr());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [farmLocationId, setFarmLocationId] = useState<number | null>(
     initialData?.farmLocation?.id ?? null,
   );
@@ -135,11 +147,23 @@ export function DiaryFormScreen({ mode, diaryId, initialDate, initialData, onDel
     } else {
       write.mutate(buildBody(), {
         onSuccess: (created) => {
-          toast.success('일지를 저장했어요');
-          router.replace({ pathname: '/(tabs)/diary/[id]', params: { id: String(created.id) } });
+          router.replace({
+            pathname: '/(tabs)/diary/write-complete',
+            params: { id: String(created.id), date: created.date },
+          });
         },
         onError: handleSubmitError,
       });
+    }
+  };
+
+  const onDateChange = (_event: unknown, selected?: Date) => {
+    if (Platform.OS !== 'ios') setShowDatePicker(false);
+    if (selected) {
+      const y = selected.getFullYear();
+      const m = String(selected.getMonth() + 1).padStart(2, '0');
+      const d = String(selected.getDate()).padStart(2, '0');
+      setDate(`${y}-${m}-${d}`);
     }
   };
 
@@ -163,15 +187,22 @@ export function DiaryFormScreen({ mode, diaryId, initialDate, initialData, onDel
       });
       const blob = await (await fetch(asset.uri)).blob();
       await uploadToS3(ps.uploadUrl, blob, asset.mimeType ?? 'image/jpeg');
-      setPhotos((s) => [...s, { key: ps.key, previewUrl: ps.publicUrl }]);
+      setPhotos((s) => [...s, { key: ps.key, previewUrl: ps.publicUrl ?? asset.uri }]);
     } catch (err) {
       toast.error('사진 업로드에 실패했어요');
     }
   };
 
   const removePhoto = (key: string) => setPhotos((s) => s.filter((p) => p.key !== key));
-  const addBlock = (workType: string) => {
-    setWorkBlocks((s) => [...s, { workType, detail: '' }]);
+
+  const confirmWorkTypes = (codes: string[]) => {
+    setWorkBlocks((s) => {
+      const existing = new Set(s.map((b) => b.workType));
+      const additions = codes
+        .filter((c) => !existing.has(c))
+        .map((c) => ({ workType: c, detail: '' }));
+      return [...s, ...additions];
+    });
     setShowSheet(false);
   };
   const updateBlockDetail = (i: number, detail: string) =>
@@ -179,6 +210,8 @@ export function DiaryFormScreen({ mode, diaryId, initialDate, initialData, onDel
   const removeBlock = (i: number) => setWorkBlocks((s) => s.filter((_, idx) => idx !== i));
 
   const displayWeather = w ?? (initialData?.weather ? initialData.weather : null);
+  const workTypeLabel = (code: string) => types.data?.find((t) => t.code === code)?.label ?? code;
+  const workTypeIcon = (code: string) => types.data?.find((t) => t.code === code)?.icon ?? '·';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -203,9 +236,22 @@ export function DiaryFormScreen({ mode, diaryId, initialDate, initialData, onDel
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView contentContainerStyle={{ padding: space.lg, gap: space.md }}>
-          <Field label="날짜">
-            <TextInput value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" />
+        <ScrollView
+          contentContainerStyle={{ padding: space.lg, gap: space.md, paddingBottom: space.xxl }}
+        >
+          <Field label="날짜 *">
+            <Pressable onPress={() => setShowDatePicker(true)} style={styles.dateField}>
+              <Text style={styles.dateText}>{formatKoreanDate(date)}</Text>
+              <Text style={styles.dateChevron}>›</Text>
+            </Pressable>
+            {showDatePicker ? (
+              <DateTimePicker
+                value={parseDate(date)}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={onDateChange}
+              />
+            ) : null}
           </Field>
 
           <Field label="농장 위치">
@@ -218,35 +264,40 @@ export function DiaryFormScreen({ mode, diaryId, initialDate, initialData, onDel
           </Field>
 
           <Field label="날씨">
-            <View style={styles.weatherRow}>
-              <Pressable
-                style={[styles.toggle, source === 'AUTO' && styles.toggleActive]}
-                onPress={() => setSource('AUTO')}
-              >
-                <Text style={[styles.toggleText, source === 'AUTO' && styles.toggleTextActive]}>
-                  자동
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[styles.toggle, source === 'MANUAL' && styles.toggleActive]}
-                onPress={() => setSource('MANUAL')}
-              >
-                <Text style={[styles.toggleText, source === 'MANUAL' && styles.toggleTextActive]}>
-                  수동
-                </Text>
-              </Pressable>
-              <View style={{ flex: 1 }} />
-              {weather.isFetching ? <ActivityIndicator /> : null}
+            <View style={styles.weatherCard}>
+              <View style={styles.weatherCardTopRow}>
+                <Text style={styles.weatherIcon}>☀️</Text>
+                <View style={{ flex: 1, marginLeft: space.sm }}>
+                  {displayWeather ? (
+                    <>
+                      <Text style={styles.weatherMain}>
+                        {displayWeather.main ?? '-'} · 최고 {displayWeather.tempMax ?? '-'}° 최저{' '}
+                        {displayWeather.tempMin ?? '-'}°
+                      </Text>
+                      <Text style={styles.weatherSub}>
+                        강수량 {displayWeather.precipitationMm ?? 0}mm · 습도{' '}
+                        {displayWeather.humidityPct ?? '-'}%
+                      </Text>
+                    </>
+                  ) : (
+                    <Text style={styles.weatherSub}>날씨 정보 불러오는 중...</Text>
+                  )}
+                </View>
+                {weather.isFetching ? <ActivityIndicator /> : null}
+                <Pressable
+                  style={[
+                    styles.sourceBadge,
+                    source === 'AUTO' ? styles.sourceBadgeAuto : styles.sourceBadgeManual,
+                  ]}
+                  onPress={() => setSource(source === 'AUTO' ? 'MANUAL' : 'AUTO')}
+                >
+                  <Text style={styles.sourceBadgeText}>{source === 'AUTO' ? '자동 입력' : '수동'}</Text>
+                </Pressable>
+              </View>
             </View>
-            {displayWeather ? (
-              <Text style={styles.weatherText}>
-                {displayWeather.main ?? '-'} · {displayWeather.tempMin ?? '-'}~
-                {displayWeather.tempMax ?? '-'}℃ · 강수 {displayWeather.precipitationMm ?? 0}mm
-              </Text>
-            ) : null}
           </Field>
 
-          <Field label="작물">
+          <Field label="작물 *">
             <ChipRow
               items={crops.data ?? []}
               selectedId={cropId}
@@ -256,12 +307,14 @@ export function DiaryFormScreen({ mode, diaryId, initialDate, initialData, onDel
             />
           </Field>
 
-          <Field label={`작업 블록 (${workBlocks.length})`}>
+          <Field label={`작업 내용 * (${workBlocks.length})`}>
             {workBlocks.map((b, i) => (
-              <View key={i} style={styles.block}>
+              <View key={`${b.workType}-${i}`} style={styles.block}>
                 <View style={styles.blockHeader}>
-                  <Text style={styles.blockType}>{b.workType}</Text>
-                  <Pressable onPress={() => removeBlock(i)}>
+                  <Text style={styles.blockIcon}>{workTypeIcon(b.workType)}</Text>
+                  <Text style={styles.blockType}>{workTypeLabel(b.workType)}</Text>
+                  <View style={{ flex: 1 }} />
+                  <Pressable onPress={() => removeBlock(i)} hitSlop={8} style={styles.blockRemoveBtn}>
                     <Text style={styles.blockRemove}>×</Text>
                   </Pressable>
                 </View>
@@ -270,11 +323,12 @@ export function DiaryFormScreen({ mode, diaryId, initialDate, initialData, onDel
                   onChangeText={(v) => updateBlockDetail(i, v)}
                   placeholder="작업 상세 (예: 점적관수 30분)"
                   maxLength={500}
+                  multiline
                 />
               </View>
             ))}
             <Button
-              label="+ 작업 추가"
+              label="+ 작업 블록 추가"
               variant="secondary"
               onPress={() => setShowSheet(true)}
               fullWidth
@@ -291,35 +345,59 @@ export function DiaryFormScreen({ mode, diaryId, initialDate, initialData, onDel
             />
           </Field>
 
-          <Field label={`사진 (${photos.length}/5)`}>
-            <View style={styles.photoRow}>
+          <Field label={`사진 (최대 5장)`}>
+            <View style={styles.photoGrid}>
               {photos.map((p) => (
-                <View key={p.key} style={styles.photoChip}>
-                  <Text style={styles.photoKey} numberOfLines={1}>
-                    {p.key.split('/').slice(-1)[0]}
-                  </Text>
-                  <Pressable onPress={() => removePhoto(p.key)}>
-                    <Text style={styles.photoRemove}>×</Text>
+                <View key={p.key} style={styles.photoThumb}>
+                  {p.previewUrl ? (
+                    <Image source={{ uri: p.previewUrl }} style={styles.photoImage} contentFit="cover" />
+                  ) : (
+                    <View style={[styles.photoImage, styles.photoFallback]}>
+                      <Text style={styles.photoFallbackIcon}>🖼️</Text>
+                    </View>
+                  )}
+                  <Pressable style={styles.photoRemoveBtn} onPress={() => removePhoto(p.key)} hitSlop={4}>
+                    <Text style={styles.photoRemoveText}>×</Text>
                   </Pressable>
                 </View>
               ))}
+              {photos.length < 5 ? (
+                <Pressable
+                  style={styles.photoAdd}
+                  onPress={pickPhoto}
+                  disabled={presign.isPending}
+                >
+                  {presign.isPending ? (
+                    <ActivityIndicator color={colors.textSecondary} />
+                  ) : (
+                    <>
+                      <Text style={styles.photoAddIcon}>+</Text>
+                      <Text style={styles.photoAddText}>추가</Text>
+                    </>
+                  )}
+                </Pressable>
+              ) : null}
             </View>
-            <Button
-              label="사진 추가"
-              variant="secondary"
-              onPress={pickPhoto}
-              disabled={photos.length >= 5}
-              fullWidth
-              loading={presign.isPending}
-            />
           </Field>
+
+          <View style={{ marginTop: space.lg }}>
+            <Button
+              label={isPending ? '저장 중...' : isEdit ? '✓ 수정 완료' : '✓ 작성 완료'}
+              onPress={submit}
+              disabled={!canSubmit}
+              loading={isPending}
+              variant="secondary"
+              fullWidth
+            />
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
       <WorkTypeSheet
         visible={showSheet}
         types={types.data ?? []}
-        onSelect={addBlock}
+        existing={workBlocks.map((b) => b.workType)}
+        onConfirm={confirmWorkTypes}
         onClose={() => setShowSheet(false)}
       />
 
@@ -389,23 +467,71 @@ function ChipRow<T extends { id: number }>({
 function WorkTypeSheet({
   visible,
   types,
-  onSelect,
+  existing,
+  onConfirm,
   onClose,
 }: {
   visible: boolean;
   types: { code: string; label: string; icon: string }[];
-  onSelect: (code: string) => void;
+  existing: string[];
+  onConfirm: (codes: string[]) => void;
   onClose: () => void;
 }) {
+  const [picked, setPicked] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (visible) setPicked([]);
+  }, [visible]);
+
+  const toggle = (code: string) =>
+    setPicked((s) => (s.includes(code) ? s.filter((c) => c !== code) : [...s, code]));
+
   return (
-    <Modal visible={visible} title="작업 유형 선택" onClose={onClose} confirmLabel="취소">
+    <Modal
+      visible={visible}
+      title="오늘 한 작업을 선택하세요"
+      onClose={onClose}
+      onConfirm={picked.length > 0 ? () => onConfirm(picked) : undefined}
+      confirmLabel={picked.length > 0 ? `선택 완료 (${picked.length})` : '취소'}
+      cancelLabel="취소"
+    >
       <View style={{ gap: space.sm, marginVertical: space.md }}>
-        {types.map((t) => (
-          <Pressable key={t.code} style={chipStyles.typeItem} onPress={() => onSelect(t.code)}>
-            <Text style={{ fontSize: 22 }}>{t.icon}</Text>
-            <Text style={{ ...typography.body, color: colors.textPrimary, flex: 1 }}>{t.label}</Text>
-          </Pressable>
-        ))}
+        {types.map((t) => {
+          const sel = picked.includes(t.code);
+          const already = existing.includes(t.code);
+          return (
+            <Pressable
+              key={t.code}
+              style={[sheetStyles.row, sel && sheetStyles.rowSel, already && sheetStyles.rowDisabled]}
+              onPress={() => !already && toggle(t.code)}
+              disabled={already}
+            >
+              <Text style={{ fontSize: 22 }}>{t.icon}</Text>
+              <Text style={[sheetStyles.label, already && { color: colors.textTertiary }]}>
+                {t.label}
+              </Text>
+              <View style={{ flex: 1 }} />
+              <Text style={[sheetStyles.check, sel && { color: colors.primary }]}>
+                {already ? '추가됨' : sel ? '✓' : ''}
+              </Text>
+            </Pressable>
+          );
+        })}
+        {picked.length > 0 ? (
+          <View style={sheetStyles.pickedRow}>
+            {picked.map((c) => {
+              const t = types.find((x) => x.code === c);
+              return (
+                <View key={c} style={sheetStyles.pickedChip}>
+                  <Text style={sheetStyles.pickedChipText}>✓ {t?.label ?? c}</Text>
+                  <Pressable onPress={() => toggle(c)} hitSlop={4}>
+                    <Text style={sheetStyles.pickedChipX}>×</Text>
+                  </Pressable>
+                </View>
+              );
+            })}
+          </View>
+        ) : null}
       </View>
     </Modal>
   );
@@ -429,40 +555,99 @@ const styles = StyleSheet.create({
   deleteBtn: { paddingVertical: space.xs },
   deleteText: { ...typography.bodyBold, color: colors.danger },
   submit: { ...typography.bodyBold, color: colors.primary },
-  weatherRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
-  toggle: {
-    paddingVertical: space.xs,
-    paddingHorizontal: space.md,
+
+  dateField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingVertical: space.md,
+    paddingHorizontal: space.lg,
+  },
+  dateText: { ...typography.body, color: colors.textPrimary, flex: 1 },
+  dateChevron: { fontSize: 22, color: colors.textTertiary },
+
+  weatherCard: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: space.md,
+  },
+  weatherCardTopRow: { flexDirection: 'row', alignItems: 'center' },
+  weatherIcon: { fontSize: 24 },
+  weatherMain: { ...typography.bodyBold, color: colors.textPrimary },
+  weatherSub: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  sourceBadge: {
+    paddingVertical: space.xs,
+    paddingHorizontal: space.sm,
     borderRadius: radius.pill,
   },
-  toggleActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  toggleText: { ...typography.caption, color: colors.textSecondary },
-  toggleTextActive: { color: '#fff' },
-  weatherText: { ...typography.body, color: colors.textPrimary },
+  sourceBadgeAuto: { backgroundColor: '#E6F4EA' },
+  sourceBadgeManual: { backgroundColor: colors.surfaceMuted },
+  sourceBadgeText: { ...typography.caption, color: colors.primary, fontWeight: '600' },
+
   block: {
     backgroundColor: colors.surface,
     padding: space.md,
     borderRadius: radius.md,
-    ...shadow.card,
+    borderWidth: 1,
+    borderColor: colors.border,
     gap: space.xs,
   },
-  blockHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  blockType: { ...typography.bodyBold, color: colors.primary },
-  blockRemove: { fontSize: 22, color: colors.textTertiary },
-  photoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs },
-  photoChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surfaceMuted,
-    paddingVertical: space.xs,
-    paddingHorizontal: space.sm,
+  blockHeader: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  blockIcon: { fontSize: 18 },
+  blockType: { ...typography.bodyBold, color: colors.textPrimary },
+  blockRemoveBtn: {
+    width: 28,
+    height: 28,
     borderRadius: radius.sm,
-    maxWidth: 140,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  photoKey: { ...typography.caption, color: colors.textPrimary, marginRight: space.xs },
-  photoRemove: { fontSize: 18, color: colors.danger },
+  blockRemove: { fontSize: 18, color: colors.textTertiary, lineHeight: 18 },
+
+  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  photoThumb: {
+    width: 92,
+    height: 92,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: colors.surfaceMuted,
+  },
+  photoImage: { width: '100%', height: '100%' },
+  photoFallback: { alignItems: 'center', justifyContent: 'center' },
+  photoFallbackIcon: { fontSize: 28 },
+  photoRemoveBtn: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoRemoveText: { color: '#fff', fontSize: 14, lineHeight: 14, fontWeight: '700' },
+  photoAdd: {
+    width: 92,
+    height: 92,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.borderStrong,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+  },
+  photoAddIcon: { fontSize: 28, color: colors.textSecondary, lineHeight: 32 },
+  photoAddText: { ...typography.caption, color: colors.textSecondary },
 });
 
 const fieldStyles = StyleSheet.create({
@@ -481,7 +666,10 @@ const chipStyles = StyleSheet.create({
   chipSel: { backgroundColor: colors.primary, borderColor: colors.primary },
   text: { ...typography.body, color: colors.textPrimary },
   textSel: { color: '#fff' },
-  typeItem: {
+});
+
+const sheetStyles = StyleSheet.create({
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.md,
@@ -489,5 +677,31 @@ const chipStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.md,
+    backgroundColor: colors.surface,
   },
+  rowSel: { backgroundColor: '#E6F4EA', borderColor: colors.primary },
+  rowDisabled: { opacity: 0.5 },
+  label: { ...typography.body, color: colors.textPrimary },
+  check: { ...typography.bodyBold, color: colors.textTertiary, minWidth: 24, textAlign: 'right' },
+  pickedRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space.xs,
+    paddingTop: space.sm,
+    borderTopWidth: 1,
+    borderColor: colors.border,
+  },
+  pickedChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#E6F4EA',
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: radius.pill,
+    paddingVertical: 4,
+    paddingHorizontal: space.sm,
+  },
+  pickedChipText: { ...typography.caption, color: colors.primary, fontWeight: '600' },
+  pickedChipX: { color: colors.primary, fontSize: 14, fontWeight: '700' },
 });
