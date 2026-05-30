@@ -41,6 +41,7 @@ export function InfoStep({
   const [checkingHandle, setCheckingHandle] = useState(false);
   const [detecting, setDetecting] = useState(false);
   const [detected, setDetected] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
 
   useEffect(() => {
     if (!handle) {
@@ -70,7 +71,8 @@ export function InfoStep({
     try {
       const perm = await Location.requestForegroundPermissionsAsync();
       if (perm.status !== 'granted') {
-        toast.error('위치 권한이 거부되었어요. 주소를 직접 입력해주세요.');
+        toast.error('위치 권한이 거부됐어요. 아래 "직접 입력하기"로 주소를 입력해주세요.');
+        setManualOpen(true);
         return;
       }
       const pos = await Location.getCurrentPositionAsync({
@@ -82,7 +84,8 @@ export function InfoStep({
       });
       const place = places[0];
       if (!place) {
-        toast.error('주소를 찾지 못했어요. 직접 입력해주세요.');
+        toast.error('주소를 찾지 못했어요. 아래 "직접 입력하기"로 입력해주세요.');
+        setManualOpen(true);
         return;
       }
       const addr = [place.region, place.city, place.district, place.street, place.name]
@@ -92,7 +95,8 @@ export function InfoStep({
       setDetected(true);
       toast.success('위치를 감지했어요');
     } catch {
-      toast.error('위치 감지에 실패했어요. 직접 입력해주세요.');
+      toast.error('위치 감지에 실패했어요. 아래 "직접 입력하기"로 입력해주세요.');
+      setManualOpen(true);
     } finally {
       setDetecting(false);
     }
@@ -204,21 +208,36 @@ export function InfoStep({
           {detected ? <Text style={styles.detectRetry}>재시도</Text> : null}
         </Pressable>
 
-        <View style={{ height: space.sm }} />
-        <TextInput
-          label="라벨"
-          placeholder="1번 농장"
-          value={locationLabel}
-          onChangeText={(v) => setField('locationLabel', v)}
-        />
-        <View style={{ height: space.sm }} />
-        <TextInput
-          label="주소 (직접 입력)"
-          placeholder="충남 논산시 연무읍 안심리 123"
-          value={locationAddress}
-          multiline
-          onChangeText={(v) => setField('locationAddress', v)}
-        />
+        <Pressable
+          style={styles.manualToggle}
+          onPress={() => setManualOpen((v) => !v)}
+          hitSlop={4}
+        >
+          <Text style={styles.manualIcon}>✏</Text>
+          <Text style={styles.manualToggleText}>직접 입력하기</Text>
+          <View style={{ flex: 1 }} />
+          <Text style={styles.manualChevron}>{manualOpen ? '▴' : '▾'}</Text>
+        </Pressable>
+
+        {manualOpen ? (
+          <View style={styles.manualBox}>
+            <TextInput
+              label="라벨"
+              placeholder="1번 농장"
+              value={locationLabel}
+              onChangeText={(v) => setField('locationLabel', v)}
+            />
+            <View style={{ height: space.sm }} />
+            <TextInput
+              label="주소"
+              placeholder="충남 논산시 연무읍 안심리 123"
+              value={locationAddress}
+              multiline
+              onChangeText={(v) => setField('locationAddress', v)}
+              hint="도로명 주소를 권장합니다"
+            />
+          </View>
+        ) : null}
       </View>
 
       {/* 재배 작물 */}
@@ -324,6 +343,34 @@ const styles = StyleSheet.create({
   detectTitle: { ...typography.bodyBold, color: colors.textPrimary },
   detectSub: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
   detectRetry: { ...typography.caption, color: colors.primary, fontWeight: '600' },
+
+  manualToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.xs,
+    paddingVertical: space.md,
+    paddingHorizontal: space.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    marginTop: space.sm,
+  },
+  manualIcon: { fontSize: 14, color: colors.textPrimary },
+  manualToggleText: { ...typography.body, color: colors.textPrimary },
+  manualChevron: { ...typography.body, color: colors.textTertiary, fontSize: 16 },
+  manualBox: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderTopWidth: 0,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    borderBottomLeftRadius: radius.md,
+    borderBottomRightRadius: radius.md,
+    padding: space.md,
+    marginTop: -space.sm,
+  },
 
   cropChips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, marginBottom: space.sm },
   cropChip: {
