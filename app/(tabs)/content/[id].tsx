@@ -10,7 +10,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useJobResult, useJobStatus, useRegenerate, useUpdateResult } from '@/api/ai';
+import * as MediaLibrary from 'expo-media-library';
+import * as FileSystem from 'expo-file-system';
+import * as Clipboard from 'expo-clipboard';
+import {
+  useJobResult,
+  useJobStatus,
+  useRecordDownload,
+  useRegenerate,
+  useUpdateResult,
+} from '@/api/ai';
 import { Button } from '@/ui/components/Button';
 import { TextInput } from '@/ui/components/TextInput';
 import { SmartStoreMetaCard } from '@/screens/content/SmartStoreMetaCard';
@@ -32,8 +41,10 @@ export default function ContentDetailScreen() {
   const result = useJobResult(isDone ? jobId : null);
   const update = useUpdateResult();
   const regen = useRegenerate();
+  const recordDownload = useRecordDownload();
   const [caption, setCaption] = useState('');
   const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (result.data?.caption !== undefined && !editing) {
@@ -64,6 +75,44 @@ export default function ContentDetailScreen() {
         onError: (e) => toast.error((e as Error).message),
       },
     );
+
+  const saveAllImagesToGallery = async (urls: string[], kind: 'CARD' | 'STORE_IMAGE') => {
+    if (!jobId || urls.length === 0) return;
+    const perm = await MediaLibrary.requestPermissionsAsync();
+    if (perm.status !== 'granted') {
+      toast.error('갤러리 권한이 필요해요');
+      return;
+    }
+    setSaving(true);
+    try {
+      for (let i = 0; i < urls.length; i++) {
+        const url = urls[i];
+        const ext = url.split('.').pop()?.split('?')[0] || 'jpg';
+        const filename = `${FileSystem.cacheDirectory}farmily-${jobId}-${i}.${ext}`;
+        const dl = await FileSystem.downloadAsync(url, filename);
+        await MediaLibrary.createAssetAsync(dl.uri);
+      }
+      try {
+        await recordDownload.mutateAsync({ jobId, kind });
+      } catch {
+        /* 카운트 실패는 silent — 사용자 저장은 이미 성공 */
+      }
+      toast.success(`${urls.length}장 갤러리에 저장됐어요`);
+    } catch {
+      toast.error('저장에 실패했어요');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const copyText = async (text: string, label: string) => {
+    if (!text) {
+      toast.info('복사할 내용이 없어요');
+      return;
+    }
+    await Clipboard.setStringAsync(text);
+    toast.success(`${label} 복사됨`);
+  };
 
   // Stepper 진행도: status가 진행 중이면 3, DONE이면 4
   const stepperCurrent = isDone ? 4 : 3;
@@ -148,7 +197,29 @@ export default function ContentDetailScreen() {
         ) : (
           <>
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>이미지 ({result.data?.cardImageUrls.length})</Text>
+              <View style={styles.captionHeader}>
+                <Text style={styles.cardTitle}>
+                  {result.data?.platform === 'INSTAGRAM' ? '카드뉴스' : '상품 소개 이미지'}{' '}
+                  ({result.data?.cardImageUrls.length ?? 0})
+                </Text>
+                <Pressable
+                  onPress={() =>
+                    saveAllImagesToGallery(
+                      result.data?.cardImageUrls ?? [],
+                      result.data?.platform === 'INSTAGRAM' ? 'CARD' : 'STORE_IMAGE',
+                    )
+                  }
+                  disabled={saving}
+                  hitSlop={6}
+                  style={styles.saveBtn}
+                >
+                  {saving ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <Text style={styles.saveBtnText}>↓ 묶음 저장</Text>
+                  )}
+                </Pressable>
+              </View>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -165,15 +236,20 @@ export default function ContentDetailScreen() {
                 <View style={styles.card}>
                   <View style={styles.captionHeader}>
                     <Text style={styles.cardTitle}>캡션</Text>
-                    {!editing ? (
-                      <Pressable onPress={() => setEditing(true)}>
-                        <Text style={styles.actionText}>편집</Text>
+                    <View style={styles.headerActions}>
+                      {!editing ? (
+                        <Pressable onPress={() => setEditing(true)} hitSlop={4}>
+                          <Text style={styles.actionText}>편집</Text>
+                        </Pressable>
+                      ) : (
+                        <Pressable onPress={saveCaption} hitSlop={4}>
+                          <Text style={styles.actionText}>저장</Text>
+                        </Pressable>
+                      )}
+                      <Pressable onPress={() => copyText(caption, '캡션')} hitSlop={4}>
+                        <Text style={styles.actionText}>📋 복사</Text>
                       </Pressable>
-                    ) : (
-                      <Pressable onPress={saveCaption}>
-                        <Text style={styles.actionText}>저장</Text>
-                      </Pressable>
-                    )}
+                    </View>
                   </View>
                   {editing ? (
                     <TextInput value={caption} onChangeText={setCaption} multiline maxLength={2200} />
@@ -182,7 +258,15 @@ export default function ContentDetailScreen() {
                   )}
                 </View>
                 <View style={styles.card}>
-                  <Text style={styles.cardTitle}>해시태그</Text>
+                  <View style={styles.captionHeader}>
+                    <Text style={styles.cardTitle}>해시태그</Text>
+                    <Pressable
+                      onPress={() => copyText((result.data?.hashtags ?? []).join(' '), '해시태그')}
+                      hitSlop={4}
+                    >
+                      <Text style={styles.actionText}>📋 복사</Text>
+                    </Pressable>
+                  </View>
                   <Text style={styles.tags}>{(result.data?.hashtags ?? []).join(' ')}</Text>
                 </View>
               </>
@@ -290,7 +374,17 @@ const styles = StyleSheet.create({
   // Result
   card: { backgroundColor: colors.surface, padding: space.lg, borderRadius: radius.md, gap: space.md, ...shadow.card },
   captionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerActions: { flexDirection: 'row', gap: space.md, alignItems: 'center' },
   actionText: { ...typography.bodyBold, color: colors.primary },
+  saveBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: space.sm,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  saveBtnText: { ...typography.caption, color: colors.textPrimary, fontWeight: '600' },
   cardTitle: { ...typography.title, color: colors.textPrimary },
   cardImg: { width: 240, height: 240, borderRadius: radius.sm, backgroundColor: colors.surfaceMuted },
   captionText: { ...typography.body, color: colors.textPrimary },
