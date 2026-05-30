@@ -7,6 +7,7 @@ type Props = {
   visible: boolean;
   title?: string;
   message?: string;
+  children?: React.ReactNode;
   onClose: () => void;
   onConfirm?: () => void;
   confirmLabel?: string;
@@ -18,6 +19,7 @@ export function Modal({
   visible,
   title,
   message,
+  children,
   onClose,
   onConfirm,
   confirmLabel = '확인',
@@ -30,6 +32,7 @@ export function Modal({
         <Pressable style={styles.card} onPress={() => {}}>
           {title ? <Text style={styles.title}>{title}</Text> : null}
           {message ? <Text style={styles.message}>{message}</Text> : null}
+          {children}
           <View style={styles.row}>
             {onConfirm ? (
               <Button label={cancelLabel} variant="secondary" onPress={onClose} fullWidth style={{ flex: 1 }} />
