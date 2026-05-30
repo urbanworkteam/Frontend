@@ -43,6 +43,21 @@ export function useDiary(id: number | null) {
   });
 }
 
+// 백엔드 영농일지 캘린더 응답에는 diary id가 없어서, 날짜별 단건 조회용
+// 명함 캘린더 endpoint를 재사용한다. 동일 데이터에 id 포함.
+export function useDiariesByDate(date: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: ['diaries-by-date', date],
+    enabled: enabled && !!date,
+    queryFn: async () => {
+      const res = await api.get<ApiResponse<DiaryResponse[]>>(
+        `/api/v1/me/profile/calendar/${date}`,
+      );
+      return unwrap(Promise.resolve(res));
+    },
+  });
+}
+
 export function useWorkTypes() {
   return useQuery({
     queryKey: ['work-types'],
