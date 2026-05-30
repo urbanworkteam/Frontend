@@ -1,21 +1,78 @@
-import React from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useMyProfile, BlockType } from '@/api/profile';
-import { Button } from '@/ui/components/Button';
+import { useMyProfile, useProfileCalendar, type SalesChannelCode } from '@/api/profile';
+import { useDiariesByDate, useWorkTypes } from '@/api/diary';
+import { useAuth } from '@/auth/useAuth';
+import { MonthCalendar } from '@/ui/components/MonthCalendar';
 import { colors, radius, shadow, space, typography } from '@/ui/tokens';
 
-const blockLabel: Record<BlockType, string> = {
-  CROP_INTRO: '재배 작물 소개',
-  STORY: '재배 스토리',
-  CALENDAR: '영농 달력',
-  DIVIDER: '구분선',
-  TEXT: '텍스트',
+const CHANNEL_META: Record<SalesChannelCode, { icon: string; label: string }> = {
+  SMARTSTORE: { icon: '🛒', label: '스마트스토어' },
+  INSTAGRAM: { icon: '📸', label: '인스타그램' },
+  DAANGN: { icon: '🥕', label: '당근' },
 };
+
+const KOR_DOW = ['일', '월', '화', '수', '목', '금', '토'];
+function formatSelectedDate(s: string): string {
+  const [y, m, d] = s.split('-').map(Number);
+  const dt = new Date(y, (m ?? 1) - 1, d ?? 1);
+  return `${dt.getMonth() + 1}월 ${dt.getDate()}일 ${KOR_DOW[dt.getDay()]}요일 · 영농일지`;
+}
+
+function todayStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 export default function MyProfileScreen() {
   const profile = useMyProfile();
+  const user = useAuth((s) => s.user);
+  const types = useWorkTypes();
+  const [ym, setYm] = useState(() => {
+    const d = new Date();
+    return { year: d.getFullYear(), month: d.getMonth() + 1 };
+  });
+  const [selected, setSelected] = useState<string>(todayStr());
+  const cal = useProfileCalendar(ym.year, ym.month);
+
+  const tagsByDate = useMemo(() => {
+    const m: Record<string, { color: string }[]> = {};
+    cal.data?.days.forEach((d) => {
+      m[d.date] = d.tags.map((t) => ({ color: t.color }));
+    });
+    return m;
+  }, [cal.data]);
+
+  const selectedDay = useMemo(
+    () => cal.data?.days.find((d) => d.date === selected),
+    [cal.data, selected],
+  );
+  const hasDiary = !!(selectedDay && selectedDay.tags.length > 0);
+  const dayDiaries = useDiariesByDate(selected, hasDiary);
+
+  const cropsLegend = useMemo(() => {
+    const m = new Map<string, string>();
+    cal.data?.days.forEach((d) =>
+      d.tags.forEach((t) => {
+        if (!m.has(t.crop)) m.set(t.crop, t.color);
+      }),
+    );
+    return Array.from(m.entries()).map(([crop, color]) => ({ crop, color }));
+  }, [cal.data]);
+
+  const workTypeLabel = (code: string) =>
+    types.data?.find((t) => t.code === code)?.label ?? code;
 
   if (profile.isLoading) {
     return (
@@ -24,67 +81,148 @@ export default function MyProfileScreen() {
       </SafeAreaView>
     );
   }
+
   const p = profile.data;
+  const farmName = p?.farm.farmName ?? '농장명 미설정';
+  const initial = farmName.charAt(0);
+  const region = p?.farm.region ?? '';
+  const method = p?.farm.farmingMethod ?? '';
+  const handle = user?.handle ?? '';
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.topBar}>
+        <Text style={styles.topBarHandle}>{handle ? `farmily.kr/@${handle}` : 'Farmily'}</Text>
+        <Pressable style={styles.editBtn} onPress={() => router.push('/(tabs)/profile/edit')} hitSlop={8}>
+          <Text style={styles.editBtnText}>✎ 명함 편집</Text>
+        </Pressable>
+      </View>
+
       <ScrollView contentContainerStyle={{ paddingBottom: space.xxl }}>
         <View style={styles.headerBg}>
           {p?.farm.backgroundImageUrl ? (
-            <Image source={{ uri: p.farm.backgroundImageUrl }} style={StyleSheet.absoluteFillObject} />
-          ) : null}
-          <View style={styles.headerActions}>
-            <Pressable onPress={() => router.push('/(tabs)/profile/edit')} style={styles.editBtn}>
-              <Text style={styles.editText}>편집</Text>
-            </Pressable>
-          </View>
+            <Image
+              source={{ uri: p.farm.backgroundImageUrl }}
+              style={StyleSheet.absoluteFillObject}
+              contentFit="cover"
+            />
+          ) : (
+            <Text style={styles.bgPlaceholder}>🖼 배경 사진</Text>
+          )}
         </View>
 
         <View style={styles.headerInfo}>
           <View style={styles.avatar}>
             {p?.farm.avatarImageUrl ? (
-              <Image source={{ uri: p.farm.avatarImageUrl }} style={{ width: 80, height: 80, borderRadius: 40 }} />
+              <Image
+                source={{ uri: p.farm.avatarImageUrl }}
+                style={{ width: 96, height: 96, borderRadius: 48 }}
+                contentFit="cover"
+              />
             ) : (
-              <Text style={{ fontSize: 32 }}>🌾</Text>
+              <Text style={styles.avatarText}>{initial}</Text>
             )}
           </View>
-          <Text style={styles.farmName}>{p?.farm.farmName ?? '농장명 미설정'}</Text>
-          <Text style={styles.region}>{p?.farm.region} · {p?.farm.farmingMethod}</Text>
-        </View>
+          <Text style={styles.farmName}>{farmName}</Text>
+          {(region || method) ? (
+            <Text style={styles.region}>
+              {[region, method].filter(Boolean).join(' · ')}
+            </Text>
+          ) : null}
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>판매처</Text>
-          <View style={styles.channelRow}>
-            {(p?.salesChannels ?? []).map((c) => (
-              <View key={c.id} style={styles.channelChip}>
-                <Text style={styles.channelText}>{c.channel}</Text>
-              </View>
-            ))}
-            {p?.salesChannels.length === 0 ? (
-              <Text style={styles.emptyText}>등록된 판매처가 없습니다</Text>
-            ) : null}
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>명함 블록</Text>
-          {(p?.blocks ?? []).map((b) => (
-            <View key={b.id} style={[styles.blockCard, !b.visible && { opacity: 0.4 }]}>
-              <Text style={styles.blockLabel}>{blockLabel[b.blockType]}</Text>
-              <Text style={styles.blockVisible}>{b.visible ? '노출' : '숨김'}</Text>
+          {(p?.salesChannels?.length ?? 0) > 0 ? (
+            <View style={styles.channelRow}>
+              {p!.salesChannels.map((c) => {
+                const meta = CHANNEL_META[c.channel] ?? { icon: '🔗', label: c.channel };
+                return (
+                  <Pressable
+                    key={c.id}
+                    style={styles.channelChip}
+                    onPress={() => Linking.openURL(c.url).catch(() => {})}
+                    hitSlop={4}
+                  >
+                    <Text style={styles.channelIcon}>{meta.icon}</Text>
+                    <Text style={styles.channelText}>{meta.label}</Text>
+                  </Pressable>
+                );
+              })}
             </View>
-          ))}
-          <Button label="블록 관리" variant="secondary" onPress={() => router.push('/(tabs)/profile/edit')} fullWidth />
+          ) : null}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>달력</Text>
-          <Button
-            label="명함 달력 보기"
-            variant="secondary"
-            onPress={() => router.push('/(tabs)/profile/calendar')}
-            fullWidth
+        <View style={styles.calendarBox}>
+          <MonthCalendar
+            year={ym.year}
+            month={ym.month}
+            selected={selected}
+            tagsByDate={tagsByDate}
+            onSelectDate={setSelected}
+            onPrevMonth={() =>
+              setYm((p) =>
+                p.month === 1 ? { year: p.year - 1, month: 12 } : { year: p.year, month: p.month - 1 },
+              )
+            }
+            onNextMonth={() =>
+              setYm((p) =>
+                p.month === 12 ? { year: p.year + 1, month: 1 } : { year: p.year, month: p.month + 1 },
+              )
+            }
           />
+
+          {cropsLegend.length > 0 ? (
+            <View style={styles.legendRow}>
+              {cropsLegend.map(({ crop, color }) => (
+                <View key={crop} style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: color }]} />
+                  <Text style={styles.legendText}>{crop}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </View>
+
+        {hasDiary ? (
+          dayDiaries.isLoading ? (
+            <View style={styles.dayCard}>
+              <ActivityIndicator color={colors.primary} />
+            </View>
+          ) : (
+            (dayDiaries.data ?? []).map((d) => (
+              <View key={d.id} style={styles.dayCard}>
+                <Text style={styles.dayCardTitle}>{formatSelectedDate(selected)}</Text>
+                {d.weather ? (
+                  <View style={styles.line}>
+                    <Text style={styles.lineIcon}>☀</Text>
+                    <Text style={styles.lineText}>
+                      {d.weather.main ?? '-'} · 최고 {d.weather.tempMax ?? '-'}° 최저{' '}
+                      {d.weather.tempMin ?? '-'}°
+                    </Text>
+                  </View>
+                ) : null}
+                {d.crop ? (
+                  <View style={styles.line}>
+                    <Text style={[styles.lineIcon, { color: d.crop.colorHex }]}>●</Text>
+                    <Text style={styles.lineText}>{d.crop.name}</Text>
+                    <View style={[styles.workTag, { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5' }]}>
+                      <Text style={[styles.workTagText, { color: '#B91C1C' }]}>
+                        {workTypeLabel(d.workBlocks[0]?.workType ?? '')}
+                      </Text>
+                    </View>
+                  </View>
+                ) : null}
+                {d.memo ? (
+                  <View style={styles.line}>
+                    <Text style={styles.lineIcon}>💬</Text>
+                    <Text style={styles.lineText}>{d.memo}</Text>
+                  </View>
+                ) : null}
+              </View>
+            ))
+          )
+        ) : null}
+
+        <View style={styles.watermark}>
+          <Text style={styles.watermarkText}>🌱 Farmily로 만든 농가 명함 — 가입하기 →</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -93,32 +231,124 @@ export default function MyProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bgPage },
-  headerBg: { height: 160, backgroundColor: colors.primaryDim, position: 'relative' },
-  headerActions: { position: 'absolute', top: space.md, right: space.md, flexDirection: 'row', gap: space.xs },
-  editBtn: { backgroundColor: 'rgba(0,0,0,0.5)', paddingVertical: space.xs, paddingHorizontal: space.md, borderRadius: radius.pill },
-  editText: { color: '#fff', ...typography.caption },
-  headerInfo: { alignItems: 'center', marginTop: -40, paddingBottom: space.lg, gap: space.xs },
-  avatar: {
-    width: 80, height: 80, borderRadius: 40, backgroundColor: colors.surface,
-    alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: colors.surface,
-  },
-  farmName: { ...typography.header, color: colors.textPrimary, marginTop: space.sm },
-  region: { ...typography.caption, color: colors.textSecondary },
-  section: { marginHorizontal: space.lg, marginTop: space.md, gap: space.md, backgroundColor: colors.surface, borderRadius: radius.md, padding: space.lg, ...shadow.card },
-  sectionTitle: { ...typography.title, color: colors.textPrimary },
-  channelRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs },
-  channelChip: { backgroundColor: colors.surfaceMuted, paddingVertical: space.xs, paddingHorizontal: space.md, borderRadius: radius.pill },
-  channelText: { ...typography.caption, color: colors.textPrimary },
-  emptyText: { ...typography.caption, color: colors.textTertiary },
-  blockCard: {
+  topBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: space.md,
+    justifyContent: 'space-between',
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+  },
+  topBarHandle: { ...typography.body, color: colors.textSecondary },
+  editBtn: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.pill,
+    paddingVertical: space.xs,
+    paddingHorizontal: space.md,
+    backgroundColor: colors.surface,
   },
-  blockLabel: { ...typography.body, color: colors.textPrimary },
-  blockVisible: { ...typography.caption, color: colors.textSecondary },
+  editBtnText: { ...typography.bodyBold, color: colors.textPrimary },
+
+  headerBg: {
+    height: 140,
+    backgroundColor: '#E6F4EA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bgPlaceholder: { ...typography.body, color: colors.primary, opacity: 0.6 },
+
+  headerInfo: { alignItems: 'center', marginTop: -48, paddingBottom: space.lg, gap: space.xs },
+  avatar: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: colors.surface,
+    ...shadow.card,
+  },
+  avatarText: { fontSize: 36, fontWeight: '700', color: colors.primary },
+  farmName: { ...typography.header, color: colors.textPrimary, marginTop: space.sm, textAlign: 'center' },
+  region: { ...typography.caption, color: colors.textSecondary, textAlign: 'center' },
+
+  channelRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space.xs,
+    justifyContent: 'center',
+    marginTop: space.sm,
+    paddingHorizontal: space.lg,
+  },
+  channelChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.pill,
+    paddingVertical: 6,
+    paddingHorizontal: space.md,
+    backgroundColor: colors.surface,
+  },
+  channelIcon: { fontSize: 16 },
+  channelText: { ...typography.caption, color: colors.textPrimary, fontWeight: '600' },
+
+  calendarBox: {
+    marginHorizontal: space.lg,
+    marginTop: space.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    paddingVertical: space.sm,
+    ...shadow.card,
+  },
+  legendRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space.md,
+    paddingHorizontal: space.lg,
+    paddingTop: space.xs,
+    paddingBottom: space.md,
+  },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot: { width: 12, height: 12, borderRadius: 3 },
+  legendText: { ...typography.caption, color: colors.textSecondary },
+
+  dayCard: {
+    marginHorizontal: space.lg,
+    marginTop: space.md,
+    backgroundColor: colors.surface,
+    padding: space.lg,
+    borderRadius: radius.md,
+    gap: space.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadow.card,
+  },
+  dayCardTitle: { ...typography.title, color: colors.textPrimary, marginBottom: space.xs },
+  line: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: 2 },
+  lineIcon: { fontSize: 14, color: colors.textSecondary, width: 16 },
+  lineText: { ...typography.body, color: colors.textPrimary },
+  workTag: {
+    paddingVertical: 2,
+    paddingHorizontal: space.sm,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    marginLeft: space.xs,
+  },
+  workTagText: { ...typography.caption, fontWeight: '600' },
+
+  watermark: {
+    marginHorizontal: space.lg,
+    marginTop: space.lg,
+    padding: space.md,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderColor: colors.border,
+  },
+  watermarkText: { ...typography.caption, color: colors.primary, fontWeight: '600' },
 });
