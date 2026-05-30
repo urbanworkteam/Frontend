@@ -118,6 +118,24 @@ export function InfoStep({
     crops.length > 0 &&
     !submitting;
 
+  // disabled 사유 안내 — 사용자가 어느 필드가 막고 있는지 즉시 알 수 있게
+  const missingMessage = (() => {
+    if (!farmDisplayName.trim()) return '농장 이름을 입력해주세요';
+    if (!handle.match(/^[a-z0-9-]{3,30}$/))
+      return '명함 주소(영문 3-30자)를 입력해주세요';
+    if (checkingHandle) return '명함 주소 확인 중...';
+    if (handleCheck.available !== true)
+      return '명함 주소가 사용 가능한지 확인되지 않았어요';
+    if (!locationLabel.trim()) return '농장 위치 라벨을 입력해주세요 (예: 1번 농장)';
+    if (!locationAddress.trim()) return '농장 주소를 입력해주세요';
+    if (crops.length === 0) {
+      if (cropInput.trim())
+        return '재배 작물을 추가해주세요 — 입력란 옆 "추가" 버튼을 눌러주세요';
+      return '재배 작물을 1개 이상 추가해주세요';
+    }
+    return null;
+  })();
+
   return (
     <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
       <View style={styles.brandRow}>
@@ -276,6 +294,13 @@ export function InfoStep({
 
       <View style={{ height: space.md }} />
 
+      {missingMessage ? (
+        <View style={styles.missingBanner}>
+          <Text style={styles.missingIcon}>ⓘ</Text>
+          <Text style={styles.missingText}>{missingMessage}</Text>
+        </View>
+      ) : null}
+
       <Button
         label={submitting ? '가입 중...' : '다음 →'}
         onPress={onSubmit}
@@ -404,4 +429,16 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textDecorationLine: 'underline',
   },
+
+  missingBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: space.xs,
+    padding: space.md,
+    backgroundColor: '#FEF3C7',
+    borderRadius: radius.md,
+    marginBottom: space.sm,
+  },
+  missingIcon: { fontSize: 14, color: '#92400E', lineHeight: 18 },
+  missingText: { ...typography.body, color: '#92400E', flex: 1, lineHeight: 18 },
 });
