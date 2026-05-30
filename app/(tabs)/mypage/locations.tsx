@@ -40,10 +40,22 @@ export default function LocationsManageScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: space.lg, gap: space.md }}>
-        <View style={[styles.card, { gap: space.sm }]}>
+        <View style={styles.addCard}>
           <TextInput label="라벨" value={label} onChangeText={setLabel} placeholder="2번 농장" />
-          <TextInput label="주소" value={address} onChangeText={setAddress} placeholder="도로명 주소" />
-          <Button label="추가" onPress={add} disabled={!label.trim() || !address.trim()} loading={create.isPending} fullWidth />
+          <TextInput
+            label="주소"
+            value={address}
+            onChangeText={setAddress}
+            placeholder="도로명 주소"
+            multiline
+          />
+          <Button
+            label="+ 추가"
+            onPress={add}
+            disabled={!label.trim() || !address.trim()}
+            loading={create.isPending}
+            fullWidth
+          />
         </View>
 
         {locs.isLoading ? <ActivityIndicator /> : null}
@@ -74,6 +86,13 @@ const styles = StyleSheet.create({
   back: { ...typography.body, color: colors.textSecondary },
   title: { ...typography.title, color: colors.textPrimary },
   card: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: colors.surface, padding: space.md, borderRadius: radius.md, ...shadow.card },
+  addCard: {
+    backgroundColor: colors.surface,
+    padding: space.lg,
+    borderRadius: radius.md,
+    gap: space.md,
+    ...shadow.card,
+  },
   cardLabel: { ...typography.bodyBold, color: colors.textPrimary },
   cardAddress: { ...typography.caption, color: colors.textSecondary },
   cardMeta: { ...typography.small, color: colors.textTertiary },
