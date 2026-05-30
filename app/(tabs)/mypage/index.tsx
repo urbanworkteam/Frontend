@@ -18,6 +18,18 @@ function formatResetAt(iso: string | null | undefined): string {
   }
 }
 
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(
+      d.getDate(),
+    ).padStart(2, '0')}`;
+  } catch {
+    return '—';
+  }
+}
+
 export default function MyPageScreen() {
   const mp = useMyPage();
   const logout = useLogout();
@@ -134,11 +146,11 @@ export default function MyPageScreen() {
 
           <View style={styles.payRow}>
             <Text style={styles.payLabel}>결제일</Text>
-            <Text style={styles.payValue}>—</Text>
+            <Text style={styles.payValue}>{formatDate(d.subscription.lastPaidAt)}</Text>
           </View>
           <View style={styles.payRow}>
             <Text style={styles.payLabel}>다음 결제일</Text>
-            <Text style={styles.payValue}>—</Text>
+            <Text style={styles.payValue}>{formatDate(d.subscription.nextBillingAt)}</Text>
           </View>
 
           <Pressable style={styles.upgradeBtn} onPress={() => router.push('/(tabs)/mypage/subscription')}>
