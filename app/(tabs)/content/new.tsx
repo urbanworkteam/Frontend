@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
+import { safeBack } from '@/lib/nav';
 import { useCreateContent, Platform } from '@/api/ai';
 import { useCrops } from '@/api/crop';
 import { useDiaryListByCrop, useWorkTypes } from '@/api/diary';
@@ -63,7 +64,7 @@ export default function ContentNewScreen() {
 
   const onBack = () => {
     if (step === 2) setStep(1);
-    else router.back();
+    else safeBack('/(tabs)/content');
   };
 
   const onNext = () => {

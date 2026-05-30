@@ -2,6 +2,7 @@ import React from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { safeBack } from '@/lib/nav';
 import { useNotificationSettings, useUpdateNotificationSettings } from '@/api/notification';
 import { colors, radius, shadow, space, typography } from '@/ui/tokens';
 
@@ -16,7 +17,7 @@ export default function NotificationsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()}><Text style={styles.back}>← 뒤로</Text></Pressable>
+        <Pressable onPress={() => safeBack('/(tabs)/mypage')}><Text style={styles.back}>← 뒤로</Text></Pressable>
         <Text style={styles.title}>알림 설정</Text>
         <View style={{ width: 50 }} />
       </View>

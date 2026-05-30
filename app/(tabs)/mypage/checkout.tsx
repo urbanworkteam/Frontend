@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
+import { safeBack } from '@/lib/nav';
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import { useConfirmCheckout } from '@/api/subscription';
 import { env } from '@/config/env';
@@ -53,12 +54,12 @@ export default function CheckoutScreen() {
     try {
       const data = JSON.parse(e.nativeEvent.data);
       if (data.canceled) {
-        router.back();
+        safeBack('/(tabs)/mypage/subscription');
         return;
       }
       if (!data.success) {
         toast.error(data.error_msg ?? '결제 실패');
-        router.back();
+        safeBack('/(tabs)/mypage/subscription');
         return;
       }
       confirm.mutate(
@@ -70,7 +71,7 @@ export default function CheckoutScreen() {
           },
           onError: (err) => {
             toast.error((err as Error).message);
-            router.back();
+            safeBack('/(tabs)/mypage/subscription');
           },
         },
       );
@@ -82,7 +83,7 @@ export default function CheckoutScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()}><Text style={styles.back}>← 취소</Text></Pressable>
+        <Pressable onPress={() => safeBack('/(tabs)/mypage/subscription')}><Text style={styles.back}>← 취소</Text></Pressable>
         <Text style={styles.title}>결제</Text>
         <View style={{ width: 50 }} />
       </View>

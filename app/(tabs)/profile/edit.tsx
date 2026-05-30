@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
+import { safeBack } from '@/lib/nav';
 import {
   useAddTextBlock,
   useDeleteBlock,
@@ -121,7 +122,7 @@ export default function ProfileEditScreen() {
       {
         onSuccess: () => {
           toast.success('저장되었습니다');
-          router.back();
+          safeBack('/(tabs)/profile');
         },
         onError: (e) => toast.error((e as Error).message),
       },
@@ -149,7 +150,7 @@ export default function ProfileEditScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8}>
+        <Pressable onPress={() => safeBack('/(tabs)/profile')} hitSlop={8}>
           <Text style={styles.back}>취소</Text>
         </Pressable>
         <Text style={styles.title}>명함 편집</Text>
@@ -306,7 +307,7 @@ export default function ProfileEditScreen() {
             loading={update.isPending}
             fullWidth
           />
-          <Pressable onPress={() => router.back()} hitSlop={4}>
+          <Pressable onPress={() => safeBack('/(tabs)/profile')} hitSlop={4}>
             <Text style={styles.cancelLink}>취소</Text>
           </Pressable>
         </ScrollView>
