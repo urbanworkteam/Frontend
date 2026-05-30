@@ -26,12 +26,19 @@ export default function OnboardingScreen() {
       setStep(1);
     } catch (e) {
       const err = e as { code?: string; message?: string; field?: string };
-      if (err.code === 'HANDLE_TAKEN' || err.code === 'HANDLE_INVALID_FORMAT') {
-        toast.error('명함 주소(handle)를 다시 확인해주세요');
+      if (err.code === 'HANDLE_TAKEN') {
+        toast.error('이미 사용 중인 명함 주소예요. 다른 영문 이름을 시도해주세요');
+      } else if (err.code === 'HANDLE_INVALID_FORMAT') {
+        toast.error('명함 주소는 영문 소문자/숫자/하이픈 3-30자만 가능해요');
       } else if (err.code === 'FARM_LOCATION_REQUIRED') {
-        toast.error('농장 위치가 필요합니다');
+        toast.error('농장 위치를 입력해주세요');
+      } else if (err.code === 'VALIDATION_ERROR') {
+        toast.error(err.message ?? '입력값을 다시 확인해주세요');
+      } else if (err.code === 'FORBIDDEN') {
+        toast.info('이미 가입이 완료된 계정이에요. 로그인 화면으로 돌아갈게요');
+        router.replace('/(tabs)/diary');
       } else {
-        toast.error(err.message ?? '가입 실패');
+        toast.error(err.message ?? '가입 실패 — 잠시 후 다시 시도해주세요');
       }
     } finally {
       setSubmitting(false);

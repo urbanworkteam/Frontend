@@ -274,20 +274,21 @@ export function InfoStep({
           </View>
         ) : null}
         <View style={styles.cropAddRow}>
-          <TextInput
-            placeholder="작물 이름 입력 (예: 딸기)"
-            value={cropInput}
-            onChangeText={setCropInput}
-            onSubmitEditing={addCropFromInput}
-            returnKeyType="done"
-            style={{ flex: 1 }}
-          />
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <TextInput
+              placeholder="작물 이름 입력 (예: 딸기)"
+              value={cropInput}
+              onChangeText={setCropInput}
+              onSubmitEditing={addCropFromInput}
+              returnKeyType="done"
+            />
+          </View>
           <Pressable
             onPress={addCropFromInput}
             disabled={!cropInput.trim()}
             style={[styles.cropAddBtn, !cropInput.trim() && styles.cropAddBtnDisabled]}
           >
-            <Text style={styles.cropAddBtnText}>추가</Text>
+            <Text style={styles.cropAddBtnText}>+ 추가</Text>
           </Pressable>
         </View>
       </View>
@@ -415,14 +416,18 @@ const styles = StyleSheet.create({
   cropAddRow: { flexDirection: 'row', gap: space.sm, alignItems: 'flex-end' },
   cropAddBtn: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.primary,
     borderRadius: radius.md,
     paddingVertical: space.md,
     paddingHorizontal: space.lg,
-    backgroundColor: colors.surface,
+    backgroundColor: '#E6F4EA',
+    minWidth: 88,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
   cropAddBtnDisabled: { opacity: 0.5 },
-  cropAddBtnText: { ...typography.bodyBold, color: colors.textPrimary },
+  cropAddBtnText: { ...typography.bodyBold, color: colors.primary },
 
   skipLink: {
     ...typography.body,
