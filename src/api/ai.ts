@@ -98,6 +98,16 @@ export function useUpdateResult() {
   });
 }
 
+// 다운로드 통계 (모킹 04_05,06의 "묶음 저장 / 이미지 저장" 버튼).
+// 백엔드는 body의 kind를 (현재는) 무시하지만 docs §5.5 명시대로 함께 전송해 둠.
+export function useRecordDownload() {
+  return useMutation({
+    mutationFn: async ({ jobId, kind }: { jobId: number; kind: 'CARD' | 'STORE_IMAGE' }) => {
+      await api.post(`/api/v1/ai/contents/${jobId}/downloads`, { kind });
+    },
+  });
+}
+
 export function useRegenerate() {
   return useMutation({
     mutationFn: async ({
