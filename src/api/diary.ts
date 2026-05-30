@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, unwrap } from './client';
-import { ApiResponse } from './types';
+import { ApiResponse, PageResponse } from './types';
 import { CalendarMonth, DiaryResponse, WorkTypeMeta } from '@/types/diary';
 
 export type WriteDiaryBody = {
@@ -38,6 +38,24 @@ export function useDiary(id: number | null) {
     enabled: id !== null && id > 0,
     queryFn: async () => {
       const res = await api.get<ApiResponse<DiaryResponse>>(`/api/v1/diaries/${id}`);
+      return unwrap(Promise.resolve(res));
+    },
+  });
+}
+
+// 작물별 / 기간 영농일지 목록 (콘텐츠 Step 2 일지 선택용).
+// 미지정 시 백엔드가 오늘 기준 최근 90일 기본 적용. cursor 페이지네이션.
+export function useDiaryListByCrop(
+  cropId: number | null,
+  opts?: { fromDate?: string; toDate?: string; limit?: number },
+) {
+  return useQuery({
+    queryKey: ['diary-by-crop', cropId, opts],
+    enabled: cropId !== null && cropId > 0,
+    queryFn: async () => {
+      const res = await api.get<ApiResponse<PageResponse<DiaryResponse>>>('/api/v1/diaries', {
+        params: { cropId, ...opts },
+      });
       return unwrap(Promise.resolve(res));
     },
   });
