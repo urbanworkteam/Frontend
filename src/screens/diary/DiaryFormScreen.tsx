@@ -50,13 +50,8 @@ function formatKoreanDate(s: string): string {
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${KOR_DOW[d.getDay()]}요일`;
 }
 
-function urlToKey(url: string): string {
-  try {
-    return new URL(url).pathname.replace(/^\//, '');
-  } catch {
-    return url;
-  }
-}
+// 백엔드 PhotoDto.s3Key 를 그대로 사용 (이전엔 URL pathname 으로 역추출했지만
+// MinIO 처럼 버킷명이 path 에 포함되면 users/{id}/... 형식이 깨져 PhotoKeyValidator 가 403).
 
 type PhotoSlot = { key: string; previewUrl?: string };
 type Source = 'AUTO' | 'MANUAL';
@@ -98,7 +93,7 @@ export function DiaryFormScreen({ mode, diaryId, initialDate, initialData, onDel
   );
   const [memo, setMemo] = useState<string>(initialData?.memo ?? '');
   const [photos, setPhotos] = useState<PhotoSlot[]>(
-    initialData?.photos.map((p) => ({ key: urlToKey(p.url), previewUrl: p.url })) ?? [],
+    initialData?.photos.map((p) => ({ key: p.s3Key, previewUrl: p.url })) ?? [],
   );
   const [workBlocks, setWorkBlocks] = useState<{ workType: string; detail: string }[]>(
     initialData?.workBlocks.map((b) => ({ workType: b.workType, detail: b.detail ?? '' })) ?? [],
