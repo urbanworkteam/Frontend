@@ -31,7 +31,7 @@ export type WeatherSnapshot = {
 };
 
 export type DiaryWorkBlock = { id?: number; workType: WorkType; detail?: string | null; sortOrder?: number };
-export type DiaryPhoto = { id: number; url: string; sortOrder: number };
+export type DiaryPhoto = { id: number; url: string; s3Key: string; sortOrder: number };
 
 export type DiaryResponse = {
   id: number;
