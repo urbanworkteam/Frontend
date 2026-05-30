@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, unwrap } from './client';
 import { ApiResponse, PageResponse } from './types';
-import { CalendarMonth, DiaryResponse, WorkTypeMeta } from '@/types/diary';
+import { CalendarMonth, DiaryResponse, FALLBACK_WORK_TYPES, WorkTypeMeta } from '@/types/diary';
 
 export type WriteDiaryBody = {
   date: string;
@@ -77,9 +77,9 @@ export function useDiariesByDate(date: string | null, enabled: boolean) {
 }
 
 export function useWorkTypes() {
-  // staleTime: Infinity 였던 게 첫 호출 실패 시 영영 lock 되는 문제.
-  // 1시간으로 줄이고 retry 2회 — 토큰 hydrate 직후 401 받았어도 자연스럽게 복구.
-  return useQuery({
+  // 백엔드 fetch 가 실패해도 정적 FALLBACK 으로 일지 작성을 막지 않음.
+  // 응답이 오면 그걸로 갱신 (서버 측 추가 작업유형 노출 가능).
+  const q = useQuery({
     queryKey: ['work-types'],
     staleTime: 60 * 60_000,
     retry: 2,
@@ -88,6 +88,9 @@ export function useWorkTypes() {
       return unwrap(Promise.resolve(res));
     },
   });
+  const data = q.data && q.data.length > 0 ? q.data : FALLBACK_WORK_TYPES;
+  const isFallback = !q.data || q.data.length === 0;
+  return { ...q, data, isFallback };
 }
 
 export function useWriteDiary() {
