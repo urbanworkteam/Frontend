@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { safeBack } from '@/lib/nav';
 import {
@@ -17,11 +17,6 @@ import { toast } from '@/state/uiStore';
 type Coords = { lat: number; lng: number } | null;
 
 async function captureCurrentCoords(): Promise<Coords> {
-  if (Platform.OS === 'web') {
-    // expo-location 도 웹 지원하나, 권한 UX 가 브라우저 종속 → 명시적 안내.
-    toast.info('웹에서는 위치 감지가 제한적입니다. 모바일에서 등록해주세요.');
-    return null;
-  }
   const Location = await import('expo-location');
   const perm = await Location.requestForegroundPermissionsAsync();
   if (perm.status !== 'granted') {

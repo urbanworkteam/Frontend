@@ -3,7 +3,7 @@ import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-na
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useKakaoLogin } from '@/api/auth';
-import { loginWithKakao } from '@/auth/kakao';
+import { buildKakaoAuthUrl, loginWithKakao } from '@/auth/kakao';
 import { KakaoButton } from '@/screens/auth/KakaoButton';
 import { TextInput } from '@/ui/components/TextInput';
 import { Button } from '@/ui/components/Button';
@@ -15,6 +15,17 @@ export default function LoginScreen() {
   const [devCode, setDevCode] = useState('');
 
   const onKakao = async () => {
+    // 웹: 인가 URL 로 풀 리디렉트 → 카카오 동의 → /oauth/kakao 콜백
+    if (Platform.OS === 'web') {
+      try {
+        const url = buildKakaoAuthUrl();
+        window.location.href = url;
+      } catch (e) {
+        toast.error((e as Error).message);
+      }
+      return;
+    }
+    // 모바일: 네이티브 SDK (현재 stub)
     try {
       await loginWithKakao();
       toast.info('카카오 로그인 흐름은 dev client 빌드 후 활성화됩니다.');
