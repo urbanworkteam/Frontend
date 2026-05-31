@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { safeBack } from '@/lib/nav';
@@ -15,6 +15,28 @@ type WebViewModule = typeof import('react-native-webview');
 const WebViewModule: WebViewModule | null =
   Platform.OS !== 'web' ? require('react-native-webview') : null;
 
+// PortOne iamport.js V1 응답 타입 (필요 필드만)
+type PortOneResponse = {
+  success: boolean;
+  imp_uid: string;
+  merchant_uid: string;
+  error_msg?: string;
+};
+
+type PortOneIMP = {
+  init: (impCode: string) => void;
+  request_pay: (
+    params: {
+      pg: string;
+      pay_method: string;
+      merchant_uid: string;
+      name: string;
+      amount: number;
+    },
+    callback: (rsp: PortOneResponse) => void,
+  ) => void;
+};
+
 export default function CheckoutScreen() {
   const { checkoutId, merchantUid, amount, plan } = useLocalSearchParams<{
     checkoutId: string;
@@ -25,55 +47,31 @@ export default function CheckoutScreen() {
   const confirm = useConfirmCheckout();
   const webRef = useRef<unknown>(null);
 
-  // 웹에서는 결제 화면 띄울 수 없음 — 안내 화면.
+  // 웹: iamport.js 동적 로드 + IMP.request_pay 직접 호출 (옵션 2)
   if (Platform.OS === 'web' || !WebViewModule) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Pressable onPress={() => safeBack('/(tabs)/mypage/subscription')}>
-            <Text style={styles.back}>← 취소</Text>
-          </Pressable>
-          <Text style={styles.title}>결제</Text>
-          <View style={{ width: 50 }} />
-        </View>
-
-        <View style={styles.webFallback}>
-          <View style={styles.iconCircle}>
-            <Text style={styles.iconText}>📱</Text>
-          </View>
-          <Text style={styles.fallbackTitle}>결제는 모바일 앱에서 진행해주세요</Text>
-          <Text style={styles.fallbackSub}>
-            포트원 결제 SDK 는 모바일(iOS/Android) 앱 환경에서만 동작합니다.{'\n'}
-            웹 브라우저에서는 결제 화면을 띄울 수 없어요.
-          </Text>
-
-          <View style={styles.summaryCard}>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>플랜</Text>
-              <Text style={styles.summaryValue}>{plan}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>결제 금액</Text>
-              <Text style={[styles.summaryValue, { color: colors.primary }]}>
-                ₩{Number(amount).toLocaleString()}
-              </Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>주문번호</Text>
-              <Text style={styles.summaryMono} numberOfLines={1}>
-                {merchantUid}
-              </Text>
-            </View>
-          </View>
-
-          <Button
-            label="← 플랜 목록으로"
-            variant="secondary"
-            onPress={() => safeBack('/(tabs)/mypage/subscription')}
-            fullWidth
-          />
-        </View>
-      </SafeAreaView>
+      <WebCheckout
+        checkoutId={checkoutId}
+        merchantUid={merchantUid}
+        amount={amount}
+        plan={plan}
+        onConfirm={(impUid, mUid) =>
+          confirm.mutate(
+            { checkoutId: parseInt(checkoutId, 10), impUid, merchantUid: mUid },
+            {
+              onSuccess: () => {
+                toast.success('결제가 완료되었습니다');
+                router.replace('/(tabs)/mypage/subscription');
+              },
+              onError: (err) => {
+                toast.error((err as Error).message);
+                safeBack('/(tabs)/mypage/subscription');
+              },
+            },
+          )
+        }
+        confirming={confirm.isPending}
+      />
     );
   }
 
@@ -155,6 +153,144 @@ export default function CheckoutScreen() {
         onMessage={onMessage}
         style={{ flex: 1 }}
       />
+    </SafeAreaView>
+  );
+}
+
+function WebCheckout({
+  checkoutId,
+  merchantUid,
+  amount,
+  plan,
+  onConfirm,
+  confirming,
+}: {
+  checkoutId: string;
+  merchantUid: string;
+  amount: string;
+  plan: string;
+  onConfirm: (impUid: string, merchantUid: string) => void;
+  confirming: boolean;
+}) {
+  const [ready, setReady] = useState(false);
+  const [processing, setProcessing] = useState(false);
+
+  // iamport.js V1 동적 로드 + IMP.init
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const existing = (window as unknown as { IMP?: PortOneIMP }).IMP;
+    if (existing) {
+      try {
+        existing.init(env.portoneImpCode || 'imp00000000');
+        setReady(true);
+      } catch (e) {
+        toast.error('PortOne 초기화 실패: ' + (e as Error).message);
+      }
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://cdn.iamport.kr/v1/iamport.js';
+    script.async = true;
+    script.onload = () => {
+      const IMP = (window as unknown as { IMP?: PortOneIMP }).IMP;
+      if (!IMP) {
+        toast.error('PortOne SDK 로드 실패');
+        return;
+      }
+      try {
+        IMP.init(env.portoneImpCode || 'imp00000000');
+        setReady(true);
+      } catch (e) {
+        toast.error('PortOne 초기화 실패: ' + (e as Error).message);
+      }
+    };
+    script.onerror = () => toast.error('PortOne SDK 다운로드 실패 (네트워크 확인)');
+    document.head.appendChild(script);
+  }, []);
+
+  const onPay = () => {
+    const IMP = (window as unknown as { IMP?: PortOneIMP }).IMP;
+    if (!IMP) {
+      toast.error('PortOne SDK 가 아직 로드되지 않았어요');
+      return;
+    }
+    setProcessing(true);
+    IMP.request_pay(
+      {
+        pg: 'html5_inicis',
+        pay_method: 'card',
+        merchant_uid: merchantUid,
+        name: `Farmily ${plan}`,
+        amount: Number(amount),
+      },
+      (rsp) => {
+        setProcessing(false);
+        if (!rsp.success) {
+          toast.error(rsp.error_msg ?? '결제 실패');
+          safeBack('/(tabs)/mypage/subscription');
+          return;
+        }
+        onConfirm(rsp.imp_uid, rsp.merchant_uid);
+      },
+    );
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Pressable onPress={() => safeBack('/(tabs)/mypage/subscription')}>
+          <Text style={styles.back}>← 취소</Text>
+        </Pressable>
+        <Text style={styles.title}>결제</Text>
+        <View style={{ width: 50 }} />
+      </View>
+
+      <View style={styles.webFallback}>
+        <View style={styles.iconCircle}>
+          <Text style={styles.iconText}>💳</Text>
+        </View>
+        <Text style={styles.fallbackTitle}>결제 정보를 확인해주세요</Text>
+        <Text style={styles.fallbackSub}>
+          {ready
+            ? '"결제하기" 를 누르면 포트원 결제 창이 뜹니다.'
+            : '포트원 SDK 를 불러오는 중...'}
+        </Text>
+
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>플랜</Text>
+            <Text style={styles.summaryValue}>{plan}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>결제 금액</Text>
+            <Text style={[styles.summaryValue, { color: colors.primary }]}>
+              ₩{Number(amount).toLocaleString()}
+            </Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>주문번호</Text>
+            <Text style={styles.summaryMono} numberOfLines={1}>
+              {merchantUid}
+            </Text>
+          </View>
+        </View>
+
+        {!ready ? <ActivityIndicator color={colors.primary} /> : null}
+
+        <Button
+          label="결제하기"
+          onPress={onPay}
+          disabled={!ready || processing || confirming}
+          loading={processing || confirming}
+          fullWidth
+        />
+        <Button
+          label="취소"
+          variant="secondary"
+          onPress={() => safeBack('/(tabs)/mypage/subscription')}
+          fullWidth
+        />
+      </View>
     </SafeAreaView>
   );
 }

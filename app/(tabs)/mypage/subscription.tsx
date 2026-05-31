@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { safeBack } from '@/lib/nav';
@@ -16,10 +16,6 @@ export default function SubscriptionScreen() {
 
   const onSelectPlan = (code: string) => {
     if (code === 'FREE' || code === sub.data?.plan) return;
-    if (Platform.OS === 'web') {
-      toast.info('결제는 모바일 앱에서만 가능합니다. 디바이스에서 시도해주세요.');
-      return;
-    }
     startCheckout.mutate(code, {
       onSuccess: (data) => {
         router.push({
