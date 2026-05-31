@@ -19,7 +19,7 @@ export type OnboardingRequest = {
   region?: string;
   farmingMethod?: string;
   crops: { name: string; colorHex?: string; stage?: string }[];
-  farmLocation: { label: string; address: string };
+  farmLocation: { label: string; address: string; lat: number; lng: number };
 };
 
 export type OnboardingResponse = {
