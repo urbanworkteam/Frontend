@@ -27,7 +27,8 @@
         "monochromeImage": "./assets/android-icon-monochrome.png",
         "backgroundColor": "#FAFAFA"
       },
-      "package": "kr.farmily.app"
+      "package": "kr.farmily.app",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -42,7 +43,8 @@
         {
           "locationWhenInUsePermission": "농장 위치 자동 등록을 위해 사용 중 위치 권한이 필요합니다"
         }
-      ]
+      ],
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true
