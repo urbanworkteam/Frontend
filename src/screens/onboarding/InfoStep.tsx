@@ -224,12 +224,14 @@ export function InfoStep({
               {detecting
                 ? '위치 감지 중...'
                 : detected
-                  ? '위치 자동 감지됨'
+                  ? '✓ 농장 위치가 등록됐어요'
                   : '현재 위치 자동 감지'}
             </Text>
             <Text style={styles.detectSub}>
-              {detected && hasCoords
-                ? `📍 ${locationLat!.toFixed(4)}, ${locationLng!.toFixed(4)}`
+              {detected
+                ? locationAddress
+                  ? locationAddress
+                  : '주소는 아래에서 직접 입력해주세요'
                 : '농장에 도착하신 후 탭하면 GPS로 현재 위치를 채워줍니다'}
             </Text>
           </View>

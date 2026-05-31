@@ -14,9 +14,9 @@ import { TextInput } from '@/ui/components/TextInput';
 import { colors, radius, shadow, space, typography } from '@/ui/tokens';
 import { toast } from '@/state/uiStore';
 
-type Coords = { lat: number; lng: number } | null;
+type Detected = { lat: number; lng: number; address?: string } | null;
 
-async function captureCurrentCoords(): Promise<Coords> {
+async function captureCurrentLocation(): Promise<Detected> {
   const Location = await import('expo-location');
   const perm = await Location.requestForegroundPermissionsAsync();
   if (perm.status !== 'granted') {
@@ -27,16 +27,27 @@ async function captureCurrentCoords(): Promise<Coords> {
     const pos = await Location.getCurrentPositionAsync({
       accuracy: Location.Accuracy.Balanced,
     });
-    return { lat: pos.coords.latitude, lng: pos.coords.longitude };
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+    // 주소 자동 변환 (실패해도 좌표는 유지)
+    let address: string | undefined;
+    try {
+      const places = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+      const place = places[0];
+      if (place) {
+        const addr = [place.region, place.city, place.district, place.street, place.name]
+          .filter(Boolean)
+          .join(' ');
+        if (addr) address = addr;
+      }
+    } catch {
+      /* reverseGeocode 실패는 무시 — 좌표만 있어도 등록 가능 */
+    }
+    return { lat, lng, address };
   } catch {
     toast.error('GPS 신호를 받지 못했어요. 실내라면 야외로 이동 후 재시도해주세요.');
     return null;
   }
-}
-
-function formatCoords(lat: number | null, lng: number | null): string {
-  if (lat == null || lng == null) return '좌표 없음';
-  return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
 }
 
 export default function LocationsManageScreen() {
@@ -48,7 +59,7 @@ export default function LocationsManageScreen() {
   // 신규 추가 폼
   const [label, setLabel] = useState('');
   const [address, setAddress] = useState('');
-  const [coords, setCoords] = useState<Coords>(null);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [detecting, setDetecting] = useState(false);
 
   // 인라인 편집 중인 카드 id
@@ -56,11 +67,15 @@ export default function LocationsManageScreen() {
 
   const onDetect = async () => {
     setDetecting(true);
-    const c = await captureCurrentCoords();
+    const d = await captureCurrentLocation();
     setDetecting(false);
-    if (c) {
-      setCoords(c);
-      toast.success('현재 위치를 감지했어요');
+    if (d) {
+      setCoords({ lat: d.lat, lng: d.lng });
+      // 주소가 자동 변환됐고 사용자가 아직 직접 입력 안 했다면 자동 채움
+      if (d.address && !address.trim()) {
+        setAddress(d.address);
+      }
+      toast.success('농장 위치가 등록됐어요');
     }
   };
 
@@ -120,12 +135,16 @@ export default function LocationsManageScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.detectTitle}>
-                {detecting ? '위치 감지 중...' : coords ? '현재 위치 감지됨' : '현재 위치 사용'}
+                {detecting
+                  ? '위치 감지 중...'
+                  : coords
+                    ? '✓ 농장 위치가 등록됐어요'
+                    : '현재 위치 사용'}
               </Text>
               <Text style={styles.detectSub}>
                 {coords
-                  ? `📍 ${formatCoords(coords.lat, coords.lng)}`
-                  : '탭하면 GPS로 위·경도를 잡습니다'}
+                  ? '주소를 자유롭게 수정하실 수 있어요'
+                  : '탭하면 농장에 도착하신 후 자동 등록'}
               </Text>
             </View>
             {coords ? <Text style={styles.detectRetry}>재시도</Text> : null}
@@ -163,17 +182,12 @@ export default function LocationsManageScreen() {
             <View key={l.id} style={styles.card}>
               <View style={{ flex: 1, gap: 2 }}>
                 <Text style={styles.cardLabel}>{l.label}</Text>
-                <Text style={styles.cardAddress}>{l.address}</Text>
-                <Text style={styles.cardCoords}>📍 {formatCoords(l.lat, l.lng)}</Text>
-                {l.kmaGridX !== null ? (
-                  <Text style={styles.cardMeta}>
-                    KMA 격자: ({l.kmaGridX}, {l.kmaGridY})
-                  </Text>
-                ) : (
+                <Text style={styles.cardAddress}>📍 {l.address}</Text>
+                {l.kmaGridX === null ? (
                   <Text style={[styles.cardMeta, { color: colors.warning }]}>
                     격자 변환 실패 — 날씨 자동 입력 불가
                   </Text>
-                )}
+                ) : null}
               </View>
               <View style={{ gap: space.xs, alignItems: 'flex-end' }}>
                 <Pressable onPress={() => setEditingId(l.id)} hitSlop={8}>
@@ -204,7 +218,7 @@ function EditCard({
 }) {
   const [label, setLabel] = useState(location.label);
   const [address, setAddress] = useState(location.address);
-  const [coords, setCoords] = useState<Coords>(
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(
     location.lat != null && location.lng != null
       ? { lat: location.lat, lng: location.lng }
       : null,
@@ -214,12 +228,13 @@ function EditCard({
 
   const onDetect = async () => {
     setDetecting(true);
-    const c = await captureCurrentCoords();
+    const d = await captureCurrentLocation();
     setDetecting(false);
-    if (c) {
-      setCoords(c);
+    if (d) {
+      setCoords({ lat: d.lat, lng: d.lng });
       setCoordsTouched(true);
-      toast.success('현재 위치를 감지했어요');
+      // 편집 시엔 reverseGeocode 주소를 자동 덮어쓰지 않음 — 사용자가 다듬은 값 보존
+      toast.success('새 위치로 갱신됐어요');
     }
   };
 
@@ -256,10 +271,14 @@ function EditCard({
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.detectTitle}>
-            {coordsTouched ? '새 위치 감지됨' : '현재 위치로 갱신'}
+            {coordsTouched ? '✓ 새 위치로 갱신됨' : '현재 위치로 갱신'}
           </Text>
           <Text style={styles.detectSub}>
-            {coords ? `📍 ${formatCoords(coords.lat, coords.lng)}` : '좌표 없음'}
+            {coords
+              ? coordsTouched
+                ? '위 주소를 새 위치에 맞게 수정해주세요'
+                : '탭하면 농장에 도착하신 후 새 위치 좌표로 갱신'
+              : '좌표 없음 — 새로 감지해주세요'}
           </Text>
         </View>
       </Pressable>
@@ -317,7 +336,6 @@ const styles = StyleSheet.create({
 
   cardLabel: { ...typography.bodyBold, color: colors.textPrimary },
   cardAddress: { ...typography.caption, color: colors.textSecondary },
-  cardCoords: { ...typography.caption, color: colors.textPrimary, marginTop: 2 },
   cardMeta: { ...typography.small, color: colors.textTertiary },
 
   edit: { ...typography.caption, color: colors.primary, fontWeight: '600' },
