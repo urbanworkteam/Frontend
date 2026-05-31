@@ -29,6 +29,8 @@ export function InfoStep({
   const crops = useOnboardingDraft((s) => s.crops);
   const locationLabel = useOnboardingDraft((s) => s.locationLabel);
   const locationAddress = useOnboardingDraft((s) => s.locationAddress);
+  const locationLat = useOnboardingDraft((s) => s.locationLat);
+  const locationLng = useOnboardingDraft((s) => s.locationLng);
   const setField = useOnboardingDraft((s) => s.setField);
   const addCrop = useOnboardingDraft((s) => s.addCrop);
   const removeCrop = useOnboardingDraft((s) => s.removeCrop);
@@ -71,32 +73,36 @@ export function InfoStep({
     try {
       const perm = await Location.requestForegroundPermissionsAsync();
       if (perm.status !== 'granted') {
-        toast.error('위치 권한이 거부됐어요. 아래 "직접 입력하기"로 주소를 입력해주세요.');
-        setManualOpen(true);
+        toast.error('위치 권한이 필요해요. 농장에 도착하신 후 권한을 허용하고 다시 시도해주세요.');
         return;
       }
       const pos = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
-      const places = await Location.reverseGeocodeAsync({
-        latitude: pos.coords.latitude,
-        longitude: pos.coords.longitude,
-      });
-      const place = places[0];
-      if (!place) {
-        toast.error('주소를 찾지 못했어요. 아래 "직접 입력하기"로 입력해주세요.');
-        setManualOpen(true);
-        return;
+      // lat/lng 는 필수. 백엔드가 KMA 격자로 변환해서 날씨 자동 입력에 사용.
+      setField('locationLat', pos.coords.latitude);
+      setField('locationLng', pos.coords.longitude);
+
+      // 주소는 디스플레이 fallback. 실패해도 사용자가 직접 입력 가능.
+      try {
+        const places = await Location.reverseGeocodeAsync({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        });
+        const place = places[0];
+        if (place) {
+          const addr = [place.region, place.city, place.district, place.street, place.name]
+            .filter(Boolean)
+            .join(' ');
+          if (addr) setField('locationAddress', addr);
+        }
+      } catch {
+        /* reverse geocode 실패는 무시 — lat/lng 만 있으면 등록 가능 */
       }
-      const addr = [place.region, place.city, place.district, place.street, place.name]
-        .filter(Boolean)
-        .join(' ');
-      setField('locationAddress', addr);
       setDetected(true);
       toast.success('위치를 감지했어요');
     } catch {
-      toast.error('위치 감지에 실패했어요. 아래 "직접 입력하기"로 입력해주세요.');
-      setManualOpen(true);
+      toast.error('위치 감지에 실패했어요. 실내라면 야외로 이동 후 재시도해주세요.');
     } finally {
       setDetecting(false);
     }
@@ -110,11 +116,13 @@ export function InfoStep({
   };
 
   const handleValid = !!handle.match(/^[a-z0-9-]{3,30}$/) && handleCheck.available === true;
+  const hasCoords = locationLat != null && locationLng != null;
   const isValid =
     !!farmDisplayName.trim() &&
     handleValid &&
     !!locationLabel.trim() &&
     !!locationAddress.trim() &&
+    hasCoords &&
     crops.length > 0 &&
     !submitting;
 
@@ -127,6 +135,8 @@ export function InfoStep({
     if (handleCheck.available !== true)
       return '명함 주소가 사용 가능한지 확인되지 않았어요';
     if (!locationLabel.trim()) return '농장 위치 라벨을 입력해주세요 (예: 1번 농장)';
+    if (!hasCoords)
+      return '농장 위치를 자동 감지해주세요 — "📍 현재 위치 자동 감지" 버튼을 눌러주세요';
     if (!locationAddress.trim()) return '농장 주소를 입력해주세요';
     if (crops.length === 0) {
       if (cropInput.trim())
@@ -218,9 +228,9 @@ export function InfoStep({
                   : '현재 위치 자동 감지'}
             </Text>
             <Text style={styles.detectSub}>
-              {detected
-                ? locationAddress
-                : '탭하면 GPS로 현재 위치를 채워줍니다'}
+              {detected && hasCoords
+                ? `📍 ${locationLat!.toFixed(4)}, ${locationLng!.toFixed(4)}`
+                : '농장에 도착하신 후 탭하면 GPS로 현재 위치를 채워줍니다'}
             </Text>
           </View>
           {detected ? <Text style={styles.detectRetry}>재시도</Text> : null}

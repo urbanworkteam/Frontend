@@ -36,7 +36,13 @@
       "expo-router",
       "expo-secure-store",
       "expo-image-picker",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "농장 위치 자동 등록을 위해 사용 중 위치 권한이 필요합니다"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

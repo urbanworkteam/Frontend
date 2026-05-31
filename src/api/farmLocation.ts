@@ -26,10 +26,24 @@ export function useFarmLocations() {
   });
 }
 
+export type CreateFarmLocationBody = {
+  label: string;
+  address: string;
+  lat: number;
+  lng: number;
+};
+
+export type UpdateFarmLocationBody = {
+  label?: string;
+  address?: string;
+  lat?: number;
+  lng?: number;
+};
+
 export function useCreateFarmLocation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (body: { label: string; address: string }) => {
+    mutationFn: async (body: CreateFarmLocationBody) => {
       const res = await api.post<ApiResponse<FarmLocation>>('/api/v1/farm-locations', body);
       return unwrap(Promise.resolve(res));
     },
@@ -40,7 +54,7 @@ export function useCreateFarmLocation() {
 export function useUpdateFarmLocation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, body }: { id: number; body: { label?: string; address?: string } }) => {
+    mutationFn: async ({ id, body }: { id: number; body: UpdateFarmLocationBody }) => {
       const res = await api.patch<ApiResponse<FarmLocation>>(`/api/v1/farm-locations/${id}`, body);
       return unwrap(Promise.resolve(res));
     },
