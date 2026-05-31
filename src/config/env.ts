@@ -19,5 +19,12 @@ const requireEnv = (key: string, fallback?: string) => {
 export const env = {
   apiBase: requireEnv('EXPO_PUBLIC_API_BASE', DEFAULT_API_BASE),
   kakaoNativeKey: requireEnv('EXPO_PUBLIC_KAKAO_NATIVE_KEY', ''),
+  // 카카오 REST API 키 — 웹 OAuth 흐름에서 인가 URL 의 client_id 로 사용 (NATIVE 키와 다름)
+  kakaoRestKey: requireEnv('EXPO_PUBLIC_KAKAO_REST_KEY', ''),
+  // 카카오 콘솔 + 백엔드 application-local.yml 의 redirect-uri 와 정확히 일치해야 함
+  kakaoRedirectUri: requireEnv(
+    'EXPO_PUBLIC_KAKAO_REDIRECT_URI',
+    'http://localhost:3000/oauth/kakao',
+  ),
   portoneImpCode: requireEnv('EXPO_PUBLIC_PORTONE_IMP_CODE', ''),
 };
