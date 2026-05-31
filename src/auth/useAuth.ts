@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { tokenStore } from './tokenStore';
+import { unregisterPushToken } from '@/notification/push';
 
 export type AuthUser = {
   id: number;
@@ -32,6 +33,8 @@ export const useAuth = create<AuthState>((set) => ({
     set({ isAuthed: true, user });
   },
   signOut: async () => {
+    // 푸시 토큰 해제 — 백엔드 DELETE + 디바이스 unregister (무음 fail OK)
+    await unregisterPushToken();
     await tokenStore.clear();
     set({ isAuthed: false, user: null });
   },

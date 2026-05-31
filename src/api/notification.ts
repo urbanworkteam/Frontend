@@ -37,3 +37,12 @@ export function useRegisterPushToken() {
     },
   });
 }
+
+export function useDeletePushToken() {
+  return useMutation({
+    mutationFn: async (body: { token: string }) => {
+      // axios delete 는 body 를 data 옵션으로 전달
+      await api.delete('/api/v1/push-tokens', { data: body });
+    },
+  });
+}
