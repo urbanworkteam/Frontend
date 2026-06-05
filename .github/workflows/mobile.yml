@@ -1,0 +1,79 @@
+# Mobile CI/CD
+# - feat/main push: 검증(ci = 타입체크 + 린트)
+# - main push 일 때만: EAS Build (android / production 프로파일)
+# - 빌드 성공/실패를 Slack #farmily-개발 채널로 알림 (SLACK_WEBHOOK_URL)
+#
+# 전제: GitHub Secrets — EXPO_TOKEN(등록 완료), SLACK_WEBHOOK_URL(등록 필요)
+
+name: Mobile CI/CD
+
+on:
+  pull_request:
+    branches: [main]      # feat → main PR: 검증(ci)만
+  push:
+    branches: [feat, main]
+
+jobs:
+  # ─── Job 1: CI (타입체크 + 린트) ───  PR·push 공통
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps
+        run: npm install --legacy-peer-deps   # peer dep 충돌 회피 (이 프로젝트 필수)
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npx expo lint
+
+  # ─── Job 2: EAS Build (android / production) ───  main push 일 때만
+  build:
+    needs: ci
+    if: github.ref_name == 'main'      # main 푸시에서만 빌드 (크레딧 절약)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps
+        run: npm install --legacy-peer-deps
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}   # owner=moriental 계정 권한으로 빌드
+
+      - name: EAS Build (android, production)
+        run: eas build --platform android --profile production --non-interactive --wait
+
+      # ── 빌드 결과를 Slack #farmily-개발로 알림 ──
+      - name: Slack 알림 (성공)
+        if: success()
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\":white_check_mark: *Farmily Mobile 빌드 성공* — main \`${GITHUB_SHA::7}\` (android/production)\"}" \
+            "${{ secrets.SLACK_WEBHOOK_URL }}"
+
+      - name: Slack 알림 (실패)
+        if: failure()
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\":x: *Farmily Mobile 빌드 실패* — main \`${GITHUB_SHA::7}\` / 로그: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\"}" \
+            "${{ secrets.SLACK_WEBHOOK_URL }}"
