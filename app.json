@@ -48,6 +48,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "66b8a07c-3276-495d-834f-8c63e502a966"
+      }
+    },
+    "owner": "moriental"
   }
 }

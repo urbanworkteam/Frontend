@@ -1,0 +1,43 @@
+name: EAS Build (Android)
+
+# 수동 실행 전용 — 매 push 마다 돌리면 무료 빌드 30회를 금방 소진하므로
+# Actions 탭에서 직접 트리거(workflow_dispatch)하도록 한다.
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: '빌드 프로필'
+        type: choice
+        options:
+          - preview
+          - development
+          - production
+        default: preview
+
+jobs:
+  build:
+    name: EAS Android build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      # google-services.json 은 EAS 파일 환경변수(GOOGLE_SERVICES_JSON)에서
+      # 빌드 서버가 자동 주입하므로 별도 처리 불필요.
+      - name: Run EAS build
+        run: eas build --platform android --profile ${{ inputs.profile }} --non-interactive --no-wait
