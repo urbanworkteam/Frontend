@@ -1,11 +1,10 @@
-import { Platform } from 'react-native';
-
-// Platform 별 백엔드 기본 호스트
-// - web / iOS: localhost (둘 다 호스트 머신에서 직접 접근)
-// - Android 에뮬레이터: 10.0.2.2 (에뮬레이터에서 호스트 머신을 가리키는 alias)
-// - 실 디바이스 / production: EXPO_PUBLIC_API_BASE 환경변수로 override
-const DEFAULT_API_BASE =
-  Platform.OS === 'android' ? 'http://10.0.2.2:8080' : 'http://localhost:8080';
+// 백엔드 기본 호스트 (fallback)
+// - 실제 빌드: EAS 환경변수 EXPO_PUBLIC_API_BASE 가 항상 override
+//   (production → api.farmily.info, preview/development → api.dev.farmily.info)
+// - 이 fallback 은 EXPO_PUBLIC_API_BASE 미설정 시에만 사용됨
+// - 주의: 로컬 개발 시 .env 의 EXPO_PUBLIC_API_BASE 를 localhost 로 설정하지 않으면
+//         prod 백엔드(api.farmily.info)로 요청이 감
+const DEFAULT_API_BASE = 'https://api.farmily.info';
 
 const requireEnv = (key: string, fallback?: string) => {
   const v = process.env[key];
