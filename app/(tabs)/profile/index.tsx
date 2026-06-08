@@ -92,7 +92,7 @@ export default function MyProfileScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.topBar}>
-        <Text style={styles.topBarHandle}>{handle ? `farmily.kr/@${handle}` : 'Farmily'}</Text>
+        <Text style={styles.topBarHandle}>{handle ? `farmily.info/@${handle}` : 'Farmily'}</Text>
         <Pressable style={styles.editBtn} onPress={() => router.push('/(tabs)/profile/edit')} hitSlop={8}>
           <Text style={styles.editBtnText}>✎ 명함 편집</Text>
         </Pressable>

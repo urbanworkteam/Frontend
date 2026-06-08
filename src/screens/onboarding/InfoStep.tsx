@@ -188,8 +188,8 @@ export function InfoStep({
             checkingHandle
               ? '확인 중...'
               : handleCheck.available === true
-                ? `farmily.kr/@${handle} ✓`
-                : `명함 URL: farmily.kr/@${handle || 'your-handle'}`
+                ? `farmily.info/@${handle} ✓`
+                : `명함 URL: farmily.info/@${handle || 'your-handle'}`
           }
         />
         {handleCheck.suggestions.length > 0 ? (

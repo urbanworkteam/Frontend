@@ -86,8 +86,8 @@ export default function DiaryHome() {
     }
     try {
       await Share.share({
-        message: `Farmily 명함: https://farmily.kr/@${handle}`,
-        url: `https://farmily.kr/@${handle}`,
+        message: `Farmily 명함: https://farmily.info/@${handle}`,
+        url: `https://farmily.info/@${handle}`,
       });
     } catch {
       // 사용자 취소 등 — 조용히 무시
