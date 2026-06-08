@@ -1,6 +1,6 @@
 # Mobile CI/CD
 # - feat/main push: 검증(ci = 타입체크 + 린트)
-# - main push 일 때만: EAS Build (android / production 프로파일)
+# - main push 일 때만: EAS Build (android / preview 프로파일)
 # - 빌드 성공/실패를 Slack #farmily-개발 채널로 알림 (SLACK_WEBHOOK_URL)
 #
 # 전제: GitHub Secrets — EXPO_TOKEN(등록 완료), SLACK_WEBHOOK_URL(등록 필요)
@@ -37,7 +37,7 @@ jobs:
       - name: Lint
         run: npx expo lint
 
-  # ─── Job 2: EAS Build (android / production) ───  main push 일 때만
+  # ─── Job 2: EAS Build (android / preview) ───  main push 일 때만
   build:
     needs: ci
     if: github.ref_name == 'main'      # main 푸시에서만 빌드 (크레딧 절약)
@@ -61,15 +61,15 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}   # owner=moriental 계정 권한으로 빌드
 
-      - name: EAS Build (android, production)
-        run: eas build --platform android --profile production --non-interactive --wait
+      - name: EAS Build (android, preview)
+        run: eas build --platform android --profile preview --non-interactive --wait
 
       # ── 빌드 결과를 Slack #farmily-개발로 알림 ──
       - name: Slack 알림 (성공)
         if: success()
         run: |
           curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\":white_check_mark: *Farmily Mobile 빌드 성공* — main \`${GITHUB_SHA::7}\` (android/production)\"}" \
+            --data "{\"text\":\":white_check_mark: *Farmily Mobile 빌드 성공* — main \`${GITHUB_SHA::7}\` (android/preview)\"}" \
             "${{ secrets.SLACK_WEBHOOK_URL }}"
 
       - name: Slack 알림 (실패)
