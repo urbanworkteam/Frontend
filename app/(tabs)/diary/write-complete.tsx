@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Button } from '@/ui/components/Button';
 import { colors, radius, shadow, space, typography } from '@/ui/tokens';
@@ -50,7 +51,7 @@ export default function DiaryWriteCompleteScreen() {
         </View>
 
         <View style={styles.aiNotice}>
-          <Text style={styles.aiNoticeIcon}>ⓘ</Text>
+          <Ionicons name="information-circle" size={16} color={colors.primary} />
           <Text style={styles.aiNoticeText}>
             방금 작성한 일지 데이터가 자동으로 콘텐츠 생성에 활용됩니다
           </Text>

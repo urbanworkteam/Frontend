@@ -1,13 +1,21 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, typography } from '@/ui/tokens';
 
-function TabIcon({ emoji, focused, label }: { emoji: string; focused: boolean; label: string }) {
+type IconName = React.ComponentProps<typeof Ionicons>['name'] | React.ComponentProps<typeof MaterialCommunityIcons>['name'];
+
+function TabIcon({ icon, iconPack, focused, label }: { icon: string; iconPack: 'ion' | 'mci'; focused: boolean; label: string }) {
+  const color = focused ? colors.primary : colors.textTertiary;
   return (
     <View style={styles.icon}>
-      <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.5 }}>{emoji}</Text>
-      <Text style={[styles.label, { color: focused ? colors.primary : colors.textTertiary }]}>{label}</Text>
+      {iconPack === 'ion' ? (
+        <Ionicons name={icon as React.ComponentProps<typeof Ionicons>['name']} size={22} color={color} />
+      ) : (
+        <MaterialCommunityIcons name={icon as React.ComponentProps<typeof MaterialCommunityIcons>['name']} size={22} color={color} />
+      )}
+      <Text style={[styles.label, { color }]}>{label}</Text>
     </View>
   );
 }
@@ -24,25 +32,25 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🪪" focused={focused} label="명함" />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="card" iconPack="ion" focused={focused} label="명함" />,
         }}
       />
       <Tabs.Screen
         name="diary"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="📔" focused={focused} label="일지" />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="book" iconPack="ion" focused={focused} label="일지" />,
         }}
       />
       <Tabs.Screen
         name="content"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="✨" focused={focused} label="콘텐츠" />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="sparkles" iconPack="ion" focused={focused} label="콘텐츠" />,
         }}
       />
       <Tabs.Screen
         name="mypage"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="👤" focused={focused} label="MY" />,
+          tabBarIcon: ({ focused }) => <TabIcon icon="person" iconPack="ion" focused={focused} label="MY" />,
         }}
       />
     </Tabs>

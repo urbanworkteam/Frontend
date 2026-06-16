@@ -26,7 +26,7 @@ export function Button({
   fullWidth,
   style,
 }: Props) {
-  const isDisabled = disabled || loading;
+  const isDisabled = !!(disabled || loading);
   return (
     <Pressable
       onPress={isDisabled ? undefined : onPress}

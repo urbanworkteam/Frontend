@@ -16,10 +16,10 @@ import * as Clipboard from 'expo-clipboard';
 // expo-media-library / expo-file-system 은 웹에서 네이티브 모듈을 import 시점에
 // 찾으려다 throw 한다. 웹은 갤러리 저장 자체가 불가능하므로 native에서만 require.
 type MediaLibraryModule = typeof import('expo-media-library');
-type FileSystemModule = typeof import('expo-file-system');
 const MediaLibrary: MediaLibraryModule | null =
   Platform.OS !== 'web' ? require('expo-media-library') : null;
-const FileSystem: FileSystemModule | null =
+// SDK 56: expo-file-system 은 새 API (Paths, DownloadTask) 사용
+const ExpoFileSystem: typeof import('expo-file-system') | null =
   Platform.OS !== 'web' ? require('expo-file-system') : null;
 import {
   useJobResult,
@@ -100,9 +100,11 @@ export default function ContentDetailScreen() {
       for (let i = 0; i < urls.length; i++) {
         const url = urls[i];
         const ext = url.split('.').pop()?.split('?')[0] || 'jpg';
-        const filename = `${FileSystem.cacheDirectory}farmily-${jobId}-${i}.${ext}`;
-        const dl = await FileSystem.downloadAsync(url, filename);
-        await MediaLibrary.createAssetAsync(dl.uri);
+        const filename = `farmily-${jobId}-${i}.${ext}`;
+        const { File, Paths } = ExpoFileSystem!;
+        const dest = new File(Paths.cache, filename);
+        const file = await File.downloadFileAsync(url, dest);
+        if (file) await MediaLibrary!.createAssetAsync(file.uri);
       }
       try {
         await recordDownload.mutateAsync({ jobId, kind });

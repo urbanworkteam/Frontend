@@ -11,8 +11,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
+
+// 판매처 아이콘 이미지
+const CHANNEL_ICONS = {
+  SMARTSTORE: require('../../../assets/icons/smartstore.png'),
+  INSTAGRAM: require('../../../assets/icons/instagram.png'),
+  DAANGN: require('../../../assets/icons/daangn.png'),
+} as const;
 import { safeBack } from '@/lib/nav';
 import {
   useAddTextBlock,
@@ -28,10 +36,10 @@ import { TextInput } from '@/ui/components/TextInput';
 import { colors, radius, shadow, space, typography } from '@/ui/tokens';
 import { toast } from '@/state/uiStore';
 
-const CHANNEL_META: Record<SalesChannelCode, { icon: string; label: string; placeholder: string }> = {
-  SMARTSTORE: { icon: '🛒', label: '스마트스토어', placeholder: 'smartstore.naver.com/...' },
-  INSTAGRAM: { icon: '📸', label: '인스타그램', placeholder: 'instagram.com/...' },
-  DAANGN: { icon: '🥕', label: '당근', placeholder: '당근 링크 입력' },
+const CHANNEL_META: Record<SalesChannelCode, { label: string; placeholder: string; iconSize: number }> = {
+  SMARTSTORE: { label: '스마트스토어', placeholder: 'smartstore.naver.com/...', iconSize: 28 },
+  INSTAGRAM: { label: '인스타그램', placeholder: 'instagram.com/...', iconSize: 28 },
+  DAANGN: { label: '당근', placeholder: '당근 링크 입력', iconSize: 28 },
 };
 const CHANNELS: SalesChannelCode[] = ['SMARTSTORE', 'INSTAGRAM', 'DAANGN'];
 
@@ -169,10 +177,10 @@ export default function ProfileEditScreen() {
               disabled={presign.isPending}
             >
               {bgPreview ? (
-                <Image source={{ uri: bgPreview }} style={StyleSheet.absoluteFillObject} contentFit="cover" />
+                <Image source={{ uri: bgPreview }} style={StyleSheet.absoluteFill} contentFit="cover" />
               ) : (
                 <>
-                  <Text style={styles.bgIcon}>🖼</Text>
+                  <Ionicons name="image" size={28} color={colors.textSecondary} />
                   <Text style={styles.bgPlaceholder}>배경 사진 추가</Text>
                 </>
               )}
@@ -195,7 +203,7 @@ export default function ProfileEditScreen() {
                 <Image source={{ uri: avatarPreview }} style={styles.avatarImage} contentFit="cover" />
               ) : (
                 <>
-                  <Text style={styles.avatarIcon}>👤</Text>
+                  <Ionicons name="person" size={24} color={colors.textSecondary} />
                   <Text style={styles.avatarPlaceholder}>프로필</Text>
                 </>
               )}
@@ -232,7 +240,7 @@ export default function ProfileEditScreen() {
                 const meta = CHANNEL_META[code];
                 return (
                   <View key={code} style={styles.channelRow}>
-                    <Text style={styles.channelIcon}>{meta.icon}</Text>
+                    <Image source={CHANNEL_ICONS[code]} style={{ width: meta.iconSize, height: meta.iconSize, borderRadius: 6 }} />
                     <TextInput
                       value={channelUrls[code]}
                       onChangeText={(v) => setChannelUrls((s) => ({ ...s, [code]: v }))}
@@ -385,7 +393,7 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: colors.border, marginVertical: 0 },
 
   channelRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  channelIcon: { fontSize: 22, width: 28, textAlign: 'center' },
+  channelIconImg: { width: 28, height: 28, borderRadius: 6 },
 
   blockList: {
     borderWidth: 1,

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useKakaoLogin } from '@/api/auth';
 import { buildKakaoAuthUrl, loginWithKakao } from '@/auth/kakao';
@@ -62,7 +63,7 @@ export default function LoginScreen() {
       >
         <View style={styles.brand}>
           <View style={styles.logoCard}>
-            <Text style={styles.logoIcon}>🌿</Text>
+            <Ionicons name="leaf" size={36} color={colors.primary} />
           </View>
           <Text style={styles.logoText}>Farmily</Text>
           <Text style={styles.tagline}>
