@@ -17,10 +17,16 @@ import { useAuth } from '@/auth/useAuth';
 import { MonthCalendar } from '@/ui/components/MonthCalendar';
 import { colors, radius, shadow, space, typography } from '@/ui/tokens';
 
-const CHANNEL_META: Record<SalesChannelCode, { icon: string; label: string }> = {
-  SMARTSTORE: { icon: '🛒', label: '스마트스토어' },
-  INSTAGRAM: { icon: '📸', label: '인스타그램' },
-  DAANGN: { icon: '🥕', label: '당근' },
+const CHANNEL_ICONS = {
+  SMARTSTORE: require('../../../assets/icons/smartstore.png'),
+  INSTAGRAM: require('../../../assets/icons/instagram.png'),
+  DAANGN: require('../../../assets/icons/daangn.png'),
+} as const;
+
+const CHANNEL_META: Record<SalesChannelCode, { label: string }> = {
+  SMARTSTORE: { label: '스마트스토어' },
+  INSTAGRAM: { label: '인스타그램' },
+  DAANGN: { label: '당근' },
 };
 
 const KOR_DOW = ['일', '월', '화', '수', '목', '금', '토'];
@@ -103,7 +109,7 @@ export default function MyProfileScreen() {
           {p?.farm.backgroundImageUrl ? (
             <Image
               source={{ uri: p.farm.backgroundImageUrl }}
-              style={StyleSheet.absoluteFillObject}
+              style={StyleSheet.absoluteFill}
               contentFit="cover"
             />
           ) : (
@@ -133,7 +139,7 @@ export default function MyProfileScreen() {
           {(p?.salesChannels?.length ?? 0) > 0 ? (
             <View style={styles.channelRow}>
               {p!.salesChannels.map((c) => {
-                const meta = CHANNEL_META[c.channel] ?? { icon: '🔗', label: c.channel };
+                const meta = CHANNEL_META[c.channel] ?? { label: c.channel };
                 return (
                   <Pressable
                     key={c.id}
@@ -141,7 +147,7 @@ export default function MyProfileScreen() {
                     onPress={() => Linking.openURL(c.url).catch(() => {})}
                     hitSlop={4}
                   >
-                    <Text style={styles.channelIcon}>{meta.icon}</Text>
+                    <Image source={CHANNEL_ICONS[c.channel]} style={styles.channelIconImg} />
                     <Text style={styles.channelText}>{meta.label}</Text>
                   </Pressable>
                 );
@@ -295,7 +301,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.md,
     backgroundColor: colors.surface,
   },
-  channelIcon: { fontSize: 16 },
+  channelIconImg: { width: 16, height: 16, borderRadius: 3 },
   channelText: { ...typography.caption, color: colors.textPrimary, fontWeight: '600' },
 
   calendarBox: {

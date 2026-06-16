@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMyPage } from '@/api/mypage';
 import { useLogout, useWithdraw } from '@/api/auth';
@@ -102,7 +103,7 @@ export default function MyPageScreen() {
         <SectionTitle text="농장 정보" />
         <View style={styles.cardGroup}>
           <NavRow
-            icon="🌱"
+            icon="leaf"
             label="재배 작물 관리"
             badge={
               d.crops.count > 0
@@ -113,7 +114,7 @@ export default function MyPageScreen() {
           />
           <View style={styles.rowDivider} />
           <NavRow
-            icon="📍"
+            icon="location"
             label="농장 위치 관리"
             badge={d.farmLocations.count > 0 ? `${d.farmLocations.count}개` : '없음'}
             onPress={() => router.push('/(tabs)/mypage/locations')}
@@ -162,7 +163,7 @@ export default function MyPageScreen() {
         <SectionTitle text="설정" />
         <View style={styles.cardGroup}>
           <NavRow
-            icon="🔔"
+            icon="notifications"
             label="알림 설정"
             onPress={() => router.push('/(tabs)/mypage/notifications')}
           />
@@ -171,7 +172,7 @@ export default function MyPageScreen() {
         {/* 계정 관리 */}
         <SectionTitle text="계정 관리" />
         <View style={styles.cardGroup}>
-          <NavRow icon="↩" label="로그아웃" onPress={onLogout} />
+          <NavRow icon="log-out-outline" label="로그아웃" onPress={onLogout} />
           <View style={styles.rowDivider} />
           <NavRow
             icon=""
@@ -207,7 +208,7 @@ function NavRow({
   onPress,
   labelStyle,
 }: {
-  icon: string;
+  icon: React.ComponentProps<typeof Ionicons>['name'] | '';
   label: string;
   badge?: string;
   onPress: () => void;
@@ -215,7 +216,7 @@ function NavRow({
 }) {
   return (
     <Pressable style={styles.navRow} onPress={onPress} hitSlop={4}>
-      {icon ? <Text style={styles.navIcon}>{icon}</Text> : null}
+      {icon ? <Ionicons name={icon} size={18} color={colors.textPrimary} style={{ width: 22, textAlign: 'center' }} /> : null}
       <Text style={[styles.navLabel, labelStyle]}>{label}</Text>
       <View style={{ flex: 1 }} />
       {badge ? (
@@ -223,7 +224,7 @@ function NavRow({
           <Text style={styles.navBadgeText}>{badge}</Text>
         </View>
       ) : null}
-      <Text style={styles.navChevron}>›</Text>
+      <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
     </Pressable>
   );
 }

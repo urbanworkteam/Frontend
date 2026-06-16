@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { queryClient } from '@/state/queryClient';
 import { ToastHost } from '@/ui/components/Toast';
+import { PhoneFrame } from '@/ui/components/PhoneFrame';
 import { useAuth } from '@/auth/useAuth';
 import { registerPushTokenIfNeeded, setupNotificationHandlers } from '@/notification/push';
 
@@ -46,14 +47,16 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#FAFAFA' } }} />
-          <ToastHost />
-          <StatusBar style="dark" />
-        </QueryClientProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <PhoneFrame>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <QueryClientProvider client={queryClient}>
+            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#FAFAFA' } }} />
+            <ToastHost />
+            <StatusBar style="dark" />
+          </QueryClientProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </PhoneFrame>
   );
 }

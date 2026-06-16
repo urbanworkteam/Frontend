@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useContentHistory, useCredits, Platform } from '@/api/ai';
 import { Button } from '@/ui/components/Button';
@@ -53,7 +54,7 @@ export default function ContentHomeScreen() {
               <Image source={{ uri: it.thumbnailUrl }} style={styles.thumb} />
             ) : (
               <View style={[styles.thumb, { backgroundColor: colors.surfaceMuted, alignItems: 'center', justifyContent: 'center' }]}>
-                <Text style={{ fontSize: 28 }}>✨</Text>
+                <Ionicons name="sparkles" size={24} color={colors.primary} />
               </View>
             )}
             <View style={{ flex: 1, gap: 2 }}>

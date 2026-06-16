@@ -11,10 +11,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { safeBack } from '@/lib/nav';
 import { useCreateContent, Platform } from '@/api/ai';
+
+// 플랫폼 아이콘 이미지
+const PLATFORM_ICONS = {
+  INSTAGRAM: require('../../../assets/icons/instagram.png'),
+  SMARTSTORE: require('../../../assets/icons/smartstore.png'),
+} as const;
 import { useCrops } from '@/api/crop';
 import { useDiaryListByCrop, useWorkTypes } from '@/api/diary';
 import { extOf, uploadToS3, usePresign } from '@/api/upload';
@@ -167,7 +174,7 @@ export default function ContentNewScreen() {
                       onPress={() => setPlatform(p)}
                       style={[styles.platformCard, sel && styles.platformSel]}
                     >
-                      <Text style={{ fontSize: 32 }}>{p === 'INSTAGRAM' ? '📸' : '🛒'}</Text>
+                      <Image source={PLATFORM_ICONS[p]} style={styles.platformIcon} />
                       <Text style={[styles.platformLabel, sel && { color: colors.primary }]}>
                         {p === 'INSTAGRAM' ? '인스타그램' : '스마트스토어'}
                       </Text>
@@ -194,7 +201,7 @@ export default function ContentNewScreen() {
                         style={[styles.cropRow, sel && styles.cropRowSel]}
                       >
                         <View style={[styles.cropIcon, { backgroundColor: c.colorHex + '33' }]}>
-                          <Text style={{ fontSize: 16 }}>🌱</Text>
+                          <Ionicons name="leaf" size={16} color={c.colorHex || colors.primary} />
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text style={styles.cropName}>{c.name}</Text>
@@ -288,7 +295,7 @@ export default function ContentNewScreen() {
                         />
                       ) : (
                         <View style={[styles.photoImage, styles.photoFallback]}>
-                          <Text style={styles.photoFallbackIcon}>🖼️</Text>
+                          <Ionicons name="image" size={28} color={colors.textSecondary} />
                         </View>
                       )}
                       <Pressable
@@ -382,6 +389,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   platformSel: { backgroundColor: '#E6F4EA', borderColor: colors.primary },
+  platformIcon: { width: 40, height: 40, borderRadius: 8 },
   platformLabel: { ...typography.bodyBold, color: colors.textPrimary },
   platformSub: { ...typography.caption, color: colors.textSecondary, textAlign: 'center' },
 
