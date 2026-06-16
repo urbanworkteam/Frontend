@@ -71,6 +71,7 @@ export default function MyPageScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.topBar}>
+        <Text style={styles.topBarBrand}>Farmily</Text>
         <Text style={styles.topBarTitle}>마이페이지</Text>
       </View>
 
@@ -232,14 +233,17 @@ function NavRow({
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bgPage },
   topBar: {
+    flexDirection: 'row',
     paddingHorizontal: space.lg,
-    paddingVertical: space.md,
-    backgroundColor: colors.surface,
+    height: 52,
+    backgroundColor: '#F0F0F0',
     borderBottomWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  topBarTitle: { ...typography.title, color: colors.textPrimary },
+  topBarBrand: { ...typography.bodyBold, color: colors.textPrimary },
+  topBarTitle: { ...typography.bodyBold, color: colors.textPrimary },
 
   // Account card
   accountCard: {

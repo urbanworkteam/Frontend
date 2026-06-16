@@ -56,8 +56,6 @@ export function PhoneFrame({ children }: { children: React.ReactNode }) {
       <View style={[styles.device, { width: phoneWidth + BEZEL_WIDTH * 2 }]}>
         {/* 앱 콘텐츠 */}
         <View style={styles.screen}>{children}</View>
-        {/* 홈 인디케이터 */}
-        <View style={styles.homeIndicator} />
       </View>
     </View>
   );
@@ -104,7 +102,7 @@ const styles = StyleSheet.create({
     borderColor: '#1A1A1A',
     backgroundColor: '#FAFAFA',
     borderRadius: BEZEL_RADIUS,
-    padding: BEZEL_WIDTH,
+    padding: 0,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.3,
@@ -115,7 +113,6 @@ const styles = StyleSheet.create({
   },
   screen: {
     flex: 1,
-    borderRadius: BEZEL_RADIUS - BEZEL_WIDTH,
     overflow: 'hidden',
     backgroundColor: '#FAFAFA',
   },
