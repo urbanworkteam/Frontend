@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MonthCalendar } from '@/ui/components/MonthCalendar';
 import { useProfileCalendar } from '@/api/profile';
+import { useWorkTypes } from '@/api/diary';
 import { colors, radius, shadow, space, typography } from '@/ui/tokens';
 
 export default function ProfileCalendarScreen() {
@@ -15,12 +16,18 @@ export default function ProfileCalendarScreen() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   });
   const cal = useProfileCalendar(ym.year, ym.month);
+  const types = useWorkTypes();
 
   const tagsByDate = useMemo(() => {
-    const m: Record<string, { color: string }[]> = {};
-    cal.data?.days.forEach((d) => (m[d.date] = d.tags.map((t) => ({ color: t.color }))));
+    const m: Record<string, { color: string; label: string }[]> = {};
+    cal.data?.days.forEach((d) =>
+      (m[d.date] = d.tags.map((t) => ({
+        color: t.color,
+        label: types.data?.find((type) => type.code === t.workType)?.label ?? t.workType,
+      }))),
+    );
     return m;
-  }, [cal.data]);
+  }, [cal.data, types.data]);
 
   const selDay = cal.data?.days.find((d) => d.date === selected);
 
@@ -33,6 +40,7 @@ export default function ProfileCalendarScreen() {
           month={ym.month}
           selected={selected}
           tagsByDate={tagsByDate}
+          tagDisplay="chips"
           onSelectDate={setSelected}
           onPrevMonth={() =>
             setYm((p) => (p.month === 1 ? { year: p.year - 1, month: 12 } : { year: p.year, month: p.month - 1 }))

@@ -43,13 +43,21 @@ export default function DiaryHome() {
   const types = useWorkTypes();
   const user = useAuth((s) => s.user);
 
+  const workTypeLabelByCode = useMemo(
+    () => new Map<string, string>((types.data ?? []).map((t) => [t.code, t.label])),
+    [types.data],
+  );
+
   const tagsByDate = useMemo(() => {
-    const m: Record<string, { color: string }[]> = {};
+    const m: Record<string, { color: string; label: string }[]> = {};
     cal.data?.days.forEach((d) => {
-      m[d.date] = d.tags.map((t) => ({ color: t.color }));
+      m[d.date] = d.tags.map((t) => ({
+        color: t.color,
+        label: workTypeLabelByCode.get(t.workType) ?? t.workType,
+      }));
     });
     return m;
-  }, [cal.data]);
+  }, [cal.data, workTypeLabelByCode]);
 
   const selectedDay = useMemo(
     () => cal.data?.days.find((d) => d.date === selected),
@@ -69,10 +77,9 @@ export default function DiaryHome() {
     return Array.from(m.entries()).map(([crop, color]) => ({ crop, color }));
   }, [cal.data]);
 
-  const workTypeLabel = (code: string) =>
-    types.data?.find((t) => t.code === code)?.label ?? code;
-  const workTypeIcon = (code: string) =>
-    types.data?.find((t) => t.code === code)?.icon ?? '·';
+  function workTypeLabel(code: string) {
+    return workTypeLabelByCode.get(code) ?? code;
+  }
 
   const goWrite = () => {
     router.push({ pathname: '/(tabs)/diary/write', params: { date: selected } });
@@ -109,36 +116,39 @@ export default function DiaryHome() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: space.lg, gap: space.md, paddingBottom: space.xxl }}>
-        <MonthCalendar
-          year={ym.year}
-          month={ym.month}
-          selected={selected}
-          tagsByDate={tagsByDate}
-          onSelectDate={setSelected}
-          onPrevMonth={() =>
-            setYm((p) =>
-              p.month === 1 ? { year: p.year - 1, month: 12 } : { year: p.year, month: p.month - 1 },
-            )
-          }
-          onNextMonth={() =>
-            setYm((p) =>
-              p.month === 12 ? { year: p.year + 1, month: 1 } : { year: p.year, month: p.month + 1 },
-            )
-          }
-        />
+        <View style={styles.calendarBox}>
+          <MonthCalendar
+            year={ym.year}
+            month={ym.month}
+            selected={selected}
+            tagsByDate={tagsByDate}
+            tagDisplay="chips"
+            onSelectDate={setSelected}
+            onPrevMonth={() =>
+              setYm((p) =>
+                p.month === 1 ? { year: p.year - 1, month: 12 } : { year: p.year, month: p.month - 1 },
+              )
+            }
+            onNextMonth={() =>
+              setYm((p) =>
+                p.month === 12 ? { year: p.year + 1, month: 1 } : { year: p.year, month: p.month + 1 },
+              )
+            }
+          />
+
+          {cropsLegend.length > 0 ? (
+            <View style={styles.legendRow}>
+              {cropsLegend.map(({ crop, color }) => (
+                <View key={crop} style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: color }]} />
+                  <Text style={styles.legendText}>{crop}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </View>
 
         {cal.isLoading ? <ActivityIndicator /> : null}
-
-        {cropsLegend.length > 0 ? (
-          <View style={styles.legendRow}>
-            {cropsLegend.map(({ crop, color }) => (
-              <View key={crop} style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: color }]} />
-                <Text style={styles.legendText}>{crop}</Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
 
         <View style={styles.selectedHeader}>
           <Text style={styles.selectedDate}>{formatSelectedDate(selected)}</Text>
@@ -316,7 +326,20 @@ const styles = StyleSheet.create({
   shareIcon: { fontSize: 14, color: colors.textPrimary, lineHeight: 16 },
   shareText: { ...typography.bodyBold, color: colors.textPrimary },
 
-  legendRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md, paddingHorizontal: space.xs },
+  calendarBox: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    paddingVertical: space.sm,
+    ...shadow.card,
+  },
+  legendRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space.md,
+    paddingHorizontal: space.lg,
+    paddingTop: space.xs,
+    paddingBottom: space.md,
+  },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDot: { width: 12, height: 12, borderRadius: 3 },
   legendText: { ...typography.caption, color: colors.textSecondary },

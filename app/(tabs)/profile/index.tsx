@@ -55,13 +55,21 @@ export default function MyProfileScreen() {
   const [viewDiary, setViewDiary] = useState<DiaryResponse | null>(null);
   const cal = useProfileCalendar(ym.year, ym.month);
 
+  const workTypeLabelByCode = useMemo(
+    () => new Map<string, string>((types.data ?? []).map((t) => [t.code, t.label])),
+    [types.data],
+  );
+
   const tagsByDate = useMemo(() => {
-    const m: Record<string, { color: string }[]> = {};
+    const m: Record<string, { color: string; label: string }[]> = {};
     cal.data?.days.forEach((d) => {
-      m[d.date] = d.tags.map((t) => ({ color: t.color }));
+      m[d.date] = d.tags.map((t) => ({
+        color: t.color,
+        label: workTypeLabelByCode.get(t.workType) ?? t.workType,
+      }));
     });
     return m;
-  }, [cal.data]);
+  }, [cal.data, workTypeLabelByCode]);
 
   const selectedDay = useMemo(
     () => cal.data?.days.find((d) => d.date === selected),
@@ -80,8 +88,9 @@ export default function MyProfileScreen() {
     return Array.from(m.entries()).map(([crop, color]) => ({ crop, color }));
   }, [cal.data]);
 
-  const workTypeLabel = (code: string) =>
-    types.data?.find((t) => t.code === code)?.label ?? code;
+  function workTypeLabel(code: string) {
+    return workTypeLabelByCode.get(code) ?? code;
+  }
 
   if (profile.isLoading) {
     return (
@@ -169,6 +178,7 @@ export default function MyProfileScreen() {
             month={ym.month}
             selected={selected}
             tagsByDate={tagsByDate}
+            tagDisplay="chips"
             onSelectDate={setSelected}
             onPrevMonth={() =>
               setYm((p) =>
