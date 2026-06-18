@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, radius, space, typography } from '../tokens';
 
-export type Tag = { color: string };
+export type Tag = { color: string; crop?: string; label?: string };
 
 type Props = {
   year: number;
@@ -12,11 +12,21 @@ type Props = {
   onSelectDate: (date: string) => void;
   onPrevMonth: () => void;
   onNextMonth: () => void;
+  tagDisplay?: 'dots' | 'chips';
 };
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
-export function MonthCalendar({ year, month, selected, tagsByDate, onSelectDate, onPrevMonth, onNextMonth }: Props) {
+export function MonthCalendar({
+  year,
+  month,
+  selected,
+  tagsByDate,
+  onSelectDate,
+  onPrevMonth,
+  onNextMonth,
+  tagDisplay = 'dots',
+}: Props) {
   const cells = useMemo(() => {
     const first = new Date(year, month - 1, 1);
     const lastDay = new Date(year, month, 0).getDate();
@@ -46,13 +56,18 @@ export function MonthCalendar({ year, month, selected, tagsByDate, onSelectDate,
 
       <View style={styles.grid}>
         {cells.map((d, i) => {
-          if (!d) return <View key={i} style={styles.cell} />;
+          if (!d) return <View key={i} style={[styles.cell, tagDisplay === 'chips' && styles.chipCell]} />;
           const tags = tagsByDate[d] ?? [];
           const sel = selected === d;
           const day = parseInt(d.split('-')[2], 10);
           const weekdayIdx = i % 7;
+          const visibleTags = tags.slice(0, tagDisplay === 'chips' ? 2 : 3);
           return (
-            <Pressable key={d} style={styles.cell} onPress={() => onSelectDate(d)}>
+            <Pressable
+              key={d}
+              style={[styles.cell, tagDisplay === 'chips' && styles.chipCell]}
+              onPress={() => onSelectDate(d)}
+            >
               <View style={[styles.dayCircle, sel && styles.daySelected]}>
                 <Text
                   style={[
@@ -65,11 +80,37 @@ export function MonthCalendar({ year, month, selected, tagsByDate, onSelectDate,
                   {day}
                 </Text>
               </View>
-              <View style={styles.tags}>
-                {tags.slice(0, 3).map((t, j) => (
-                  <View key={j} style={[styles.dot, { backgroundColor: t.color }]} />
-                ))}
-              </View>
+              {tagDisplay === 'chips' ? (
+                <View style={styles.chipTags}>
+                  {visibleTags.map((t, j) => {
+                    const label = t.label ?? t.crop;
+                    return label ? (
+                      <View
+                        key={`${label}-${j}`}
+                        style={[
+                          styles.cropChip,
+                          { backgroundColor: `${t.color}1F`, borderColor: t.color },
+                        ]}
+                      >
+                        <Text numberOfLines={1} style={[styles.cropChipText, { color: t.color }]}>
+                          {label}
+                        </Text>
+                      </View>
+                    ) : (
+                      <View key={j} style={[styles.dot, { backgroundColor: t.color }]} />
+                    );
+                  })}
+                  {tags.length > visibleTags.length ? (
+                    <Text style={styles.moreChipText}>+{tags.length - visibleTags.length}</Text>
+                  ) : null}
+                </View>
+              ) : (
+                <View style={styles.tags}>
+                  {visibleTags.map((t, j) => (
+                    <View key={j} style={[styles.dot, { backgroundColor: t.color }]} />
+                  ))}
+                </View>
+              )}
             </Pressable>
           );
         })}
@@ -87,9 +128,21 @@ const styles = StyleSheet.create({
   weekday: { flex: 1, textAlign: 'center', ...typography.caption, color: colors.textSecondary, paddingVertical: space.xs },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   cell: { width: '14.2857%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center' },
+  chipCell: { aspectRatio: undefined, height: 66, justifyContent: 'flex-start', paddingTop: 3 },
   dayCircle: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   daySelected: { backgroundColor: colors.primary },
   dayText: { ...typography.body, color: colors.textPrimary },
   tags: { flexDirection: 'row', gap: 3, marginTop: 2, minHeight: 6 },
   dot: { width: 5, height: 5, borderRadius: radius.pill },
+  chipTags: { width: '100%', alignItems: 'center', gap: 2, marginTop: 1, minHeight: 28, paddingHorizontal: 1 },
+  cropChip: {
+    maxWidth: '100%',
+    borderWidth: 1,
+    borderRadius: radius.sm,
+    paddingHorizontal: 4,
+    height: 15,
+    justifyContent: 'center',
+  },
+  cropChipText: { ...typography.small, fontSize: 9, lineHeight: 11, fontWeight: '600' },
+  moreChipText: { ...typography.small, fontSize: 9, lineHeight: 11, color: colors.textTertiary },
 });

@@ -38,16 +38,7 @@ export default function DiaryWriteCompleteScreen() {
             onPress={() => router.replace('/(tabs)/diary')}
             fullWidth
           />
-          {diaryId ? (
-            <Pressable
-              onPress={() =>
-                router.replace({ pathname: '/(tabs)/diary/[id]', params: { id: String(diaryId) } })
-              }
-              hitSlop={8}
-            >
-              <Text style={styles.viewLink}>방금 작성한 일지 보기 →</Text>
-            </Pressable>
-          ) : null}
+          {diaryId ? null : null}
         </View>
 
         <View style={styles.aiNotice}>

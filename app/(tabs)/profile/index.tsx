@@ -8,11 +8,13 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useMyProfile, useProfileCalendar, type SalesChannelCode } from '@/api/profile';
 import { useDiariesByDate, useWorkTypes } from '@/api/diary';
+import type { DiaryResponse } from '@/types/diary';
 import { useAuth } from '@/auth/useAuth';
 import { MonthCalendar } from '@/ui/components/MonthCalendar';
 import { colors, radius, shadow, space, typography } from '@/ui/tokens';
@@ -50,15 +52,24 @@ export default function MyProfileScreen() {
     return { year: d.getFullYear(), month: d.getMonth() + 1 };
   });
   const [selected, setSelected] = useState<string>(todayStr());
+  const [viewDiary, setViewDiary] = useState<DiaryResponse | null>(null);
   const cal = useProfileCalendar(ym.year, ym.month);
 
+  const workTypeLabelByCode = useMemo(
+    () => new Map<string, string>((types.data ?? []).map((t) => [t.code, t.label])),
+    [types.data],
+  );
+
   const tagsByDate = useMemo(() => {
-    const m: Record<string, { color: string }[]> = {};
+    const m: Record<string, { color: string; label: string }[]> = {};
     cal.data?.days.forEach((d) => {
-      m[d.date] = d.tags.map((t) => ({ color: t.color }));
+      m[d.date] = d.tags.map((t) => ({
+        color: t.color,
+        label: workTypeLabelByCode.get(t.workType) ?? t.workType,
+      }));
     });
     return m;
-  }, [cal.data]);
+  }, [cal.data, workTypeLabelByCode]);
 
   const selectedDay = useMemo(
     () => cal.data?.days.find((d) => d.date === selected),
@@ -77,8 +88,9 @@ export default function MyProfileScreen() {
     return Array.from(m.entries()).map(([crop, color]) => ({ crop, color }));
   }, [cal.data]);
 
-  const workTypeLabel = (code: string) =>
-    types.data?.find((t) => t.code === code)?.label ?? code;
+  function workTypeLabel(code: string) {
+    return workTypeLabelByCode.get(code) ?? code;
+  }
 
   if (profile.isLoading) {
     return (
@@ -100,7 +112,7 @@ export default function MyProfileScreen() {
       <View style={styles.topBar}>
         <Text style={styles.topBarHandle}>{handle ? `farmily.info/@${handle}` : 'Farmily'}</Text>
         <Pressable style={styles.editBtn} onPress={() => router.push('/(tabs)/profile/edit')} hitSlop={8}>
-          <Text style={styles.editBtnText}>✎ 명함 편집</Text>
+          <Text style={styles.editBtnText}>명함 편집</Text>
         </Pressable>
       </View>
 
@@ -113,27 +125,31 @@ export default function MyProfileScreen() {
               contentFit="cover"
             />
           ) : (
-            <Text style={styles.bgPlaceholder}>🖼 배경 사진</Text>
+            <Text style={styles.bgPlaceholder}>배경 사진</Text>
           )}
         </View>
 
         <View style={styles.headerInfo}>
-          <View style={styles.avatar}>
-            {p?.farm.avatarImageUrl ? (
-              <Image
-                source={{ uri: p.farm.avatarImageUrl }}
-                style={{ width: 96, height: 96, borderRadius: 48 }}
-                contentFit="cover"
-              />
-            ) : (
-              <Text style={styles.avatarText}>{initial}</Text>
-            )}
+          <View style={styles.avatarRing}>
+            <View style={styles.avatar}>
+              {p?.farm.avatarImageUrl ? (
+                <Image
+                  source={{ uri: p.farm.avatarImageUrl }}
+                  style={{ width: 88, height: 88, borderRadius: 44 }}
+                  contentFit="cover"
+                />
+              ) : (
+                <Text style={styles.avatarText}>{initial}</Text>
+              )}
+            </View>
           </View>
           <Text style={styles.farmName}>{farmName}</Text>
-          {(region || method) ? (
-            <Text style={styles.region}>
-              {[region, method].filter(Boolean).join(' · ')}
-            </Text>
+          <View style={styles.nameDivider} />
+          {region ? (
+            <Text style={styles.regionText}>{region}</Text>
+          ) : null}
+          {method ? (
+            <Text style={styles.methodText}>{method}</Text>
           ) : null}
 
           {(p?.salesChannels?.length ?? 0) > 0 ? (
@@ -162,6 +178,7 @@ export default function MyProfileScreen() {
             month={ym.month}
             selected={selected}
             tagsByDate={tagsByDate}
+            tagDisplay="chips"
             onSelectDate={setSelected}
             onPrevMonth={() =>
               setYm((p) =>
@@ -195,31 +212,51 @@ export default function MyProfileScreen() {
           ) : (
             (dayDiaries.data ?? []).map((d) => (
               <View key={d.id} style={styles.dayCard}>
-                <Text style={styles.dayCardTitle}>{formatSelectedDate(selected)}</Text>
+                {/* 사진 */}
+                {d.photos && d.photos.length > 0 ? (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.dayPhotoRow}>
+                    {d.photos.map((p) => (
+                      <Image key={p.id} source={{ uri: p.url }} style={styles.dayPhoto} contentFit="cover" />
+                    ))}
+                  </ScrollView>
+                ) : null}
+
+                {/* 헤더: 날짜 + 보기 버튼 */}
+                <View style={styles.dayCardHeader}>
+                  <Text style={styles.dayCardTitle}>{formatSelectedDate(selected)}</Text>
+                  <Pressable style={styles.viewBtn} onPress={() => setViewDiary(d)} hitSlop={6}>
+                    <Text style={styles.viewBtnText}>보기</Text>
+                  </Pressable>
+                </View>
+
+                {d.crop ? (
+                  <View style={styles.line}>
+                    <View style={[styles.cropDot, { backgroundColor: d.crop.colorHex }]} />
+                    <Text style={styles.lineLabel}>작물</Text>
+                    <Text style={styles.lineText} numberOfLines={1}>{d.crop.name}</Text>
+                  </View>
+                ) : null}
                 {d.weather ? (
                   <View style={styles.line}>
-                    <Text style={styles.lineIcon}>☀</Text>
-                    <Text style={styles.lineText}>
-                      {d.weather.main ?? '-'} · 최고 {d.weather.tempMax ?? '-'}° 최저{' '}
-                      {d.weather.tempMin ?? '-'}°
+                    <Ionicons name="partly-sunny-outline" size={16} color={colors.textTertiary} style={styles.lineIconStyle} />
+                    <Text style={styles.lineLabel}>날씨</Text>
+                    <Text style={styles.lineText} numberOfLines={1}>
+                      {d.weather.main ?? '-'} · {d.weather.tempMax ?? '-'}° / {d.weather.tempMin ?? '-'}°
                     </Text>
                   </View>
                 ) : null}
-                {d.crop ? (
-                  <View style={styles.line}>
-                    <Text style={[styles.lineIcon, { color: d.crop.colorHex }]}>●</Text>
-                    <Text style={styles.lineText}>{d.crop.name}</Text>
-                    <View style={[styles.workTag, { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5' }]}>
-                      <Text style={[styles.workTagText, { color: '#B91C1C' }]}>
-                        {workTypeLabel(d.workBlocks[0]?.workType ?? '')}
-                      </Text>
-                    </View>
+                {d.workBlocks.map((b) => (
+                  <View key={`work-${b.id ?? b.workType}`} style={styles.line}>
+                    <Ionicons name="leaf-outline" size={16} color={colors.textTertiary} style={styles.lineIconStyle} />
+                    <Text style={styles.lineLabel}>{workTypeLabel(b.workType)}</Text>
+                    <Text style={styles.lineText} numberOfLines={1}>{b.detail || '-'}</Text>
                   </View>
-                ) : null}
+                ))}
                 {d.memo ? (
                   <View style={styles.line}>
-                    <Text style={styles.lineIcon}>💬</Text>
-                    <Text style={styles.lineText}>{d.memo}</Text>
+                    <Ionicons name="document-text-outline" size={16} color={colors.textTertiary} style={styles.lineIconStyle} />
+                    <Text style={styles.lineLabel}>메모</Text>
+                    <Text style={styles.lineText} numberOfLines={1}>{d.memo}</Text>
                   </View>
                 ) : null}
               </View>
@@ -227,10 +264,63 @@ export default function MyProfileScreen() {
           )
         ) : null}
 
-        <View style={styles.watermark}>
-          <Text style={styles.watermarkText}>🌱 Farmily로 만든 농가 명함 — 가입하기 →</Text>
-        </View>
       </ScrollView>
+
+      {/* 일지 보기 모달 */}
+      {viewDiary ? (
+        <Pressable style={styles.modalOverlay} onPress={() => setViewDiary(null)}>
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{formatSelectedDate(viewDiary.date)} 영농일지</Text>
+              <Pressable onPress={() => setViewDiary(null)} hitSlop={8}>
+                <Text style={styles.modalClose}>✕</Text>
+              </Pressable>
+            </View>
+            <ScrollView style={{ flex: 1 }}>
+              {viewDiary.photos && viewDiary.photos.length > 0 ? (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ padding: space.md }}>
+                  {viewDiary.photos.map((p) => (
+                    <Image key={p.id} source={{ uri: p.url }} style={{ width: 220, height: 160, borderRadius: 8, marginRight: space.sm }} contentFit="cover" />
+                  ))}
+                </ScrollView>
+              ) : null}
+              <View style={{ padding: space.lg, gap: space.md }}>
+                {viewDiary.crop ? (
+                  <View style={styles.line}>
+                    <View style={[styles.cropDot, { backgroundColor: viewDiary.crop.colorHex }]} />
+                    <Text style={styles.lineLabel}>작물</Text>
+                    <Text style={styles.lineText}>{viewDiary.crop.name}</Text>
+                  </View>
+                ) : null}
+                {viewDiary.weather ? (
+                  <View style={styles.line}>
+                    <Ionicons name="partly-sunny-outline" size={16} color={colors.textTertiary} style={styles.lineIconStyle} />
+                    <Text style={styles.lineLabel}>날씨</Text>
+                    <Text style={styles.lineText}>{viewDiary.weather.main ?? '-'} · {viewDiary.weather.tempMax ?? '-'}° / {viewDiary.weather.tempMin ?? '-'}°</Text>
+                  </View>
+                ) : null}
+                {viewDiary.workBlocks.map((b) => (
+                  <View key={`m-${b.id ?? b.workType}`} style={styles.line}>
+                    <Ionicons name="leaf-outline" size={16} color={colors.textTertiary} style={styles.lineIconStyle} />
+                    <Text style={styles.lineLabel}>{workTypeLabel(b.workType)}</Text>
+                    <Text style={styles.lineText}>{b.detail || '-'}</Text>
+                  </View>
+                ))}
+                {viewDiary.memo ? (
+                  <View style={styles.line}>
+                    <Ionicons name="document-text-outline" size={16} color={colors.textTertiary} style={styles.lineIconStyle} />
+                    <Text style={styles.lineLabel}>메모</Text>
+                    <Text style={styles.lineText}>{viewDiary.memo}</Text>
+                  </View>
+                ) : null}
+              </View>
+            </ScrollView>
+            <Pressable style={styles.modalCloseBtn} onPress={() => setViewDiary(null)}>
+              <Text style={styles.modalCloseBtnText}>닫기</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -242,12 +332,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: space.lg,
-    paddingVertical: space.md,
-    backgroundColor: colors.surface,
+    height: 52,
+    backgroundColor: '#F0F0F0',
     borderBottomWidth: 1,
     borderColor: colors.border,
   },
-  topBarHandle: { ...typography.body, color: colors.textSecondary },
+  topBarHandle: { ...typography.bodyBold, color: colors.textPrimary },
   editBtn: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -259,28 +349,41 @@ const styles = StyleSheet.create({
   editBtnText: { ...typography.bodyBold, color: colors.textPrimary },
 
   headerBg: {
-    height: 140,
+    height: 180,
     backgroundColor: '#E6F4EA',
     alignItems: 'center',
     justifyContent: 'center',
   },
   bgPlaceholder: { ...typography.body, color: colors.primary, opacity: 0.6 },
 
-  headerInfo: { alignItems: 'center', marginTop: -48, paddingBottom: space.lg, gap: space.xs },
+  headerInfo: { alignItems: 'center', marginTop: -52, paddingBottom: space.lg, gap: space.xs },
   avatar: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: colors.surface,
-    ...shadow.card,
+    overflow: 'hidden',
+  },
+  avatarRing: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
   },
   avatarText: { fontSize: 36, fontWeight: '700', color: colors.primary },
-  farmName: { ...typography.header, color: colors.textPrimary, marginTop: space.sm, textAlign: 'center' },
-  region: { ...typography.caption, color: colors.textSecondary, textAlign: 'center' },
+  farmName: { ...typography.header, fontSize: 22, color: colors.textPrimary, marginTop: space.md, textAlign: 'center', letterSpacing: -0.3 },
+  nameDivider: { width: 32, height: 2, backgroundColor: colors.primary, borderRadius: 1, marginTop: space.sm },
+  regionText: { ...typography.body, color: colors.textSecondary, textAlign: 'center', marginTop: space.sm, lineHeight: 20 },
+  methodText: { ...typography.caption, color: colors.textTertiary, textAlign: 'center', marginTop: 4 },
 
   channelRow: {
     flexDirection: 'row',
@@ -337,8 +440,10 @@ const styles = StyleSheet.create({
   },
   dayCardTitle: { ...typography.title, color: colors.textPrimary, marginBottom: space.xs },
   line: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: 2 },
-  lineIcon: { fontSize: 14, color: colors.textSecondary, width: 16 },
-  lineText: { ...typography.body, color: colors.textPrimary },
+  lineIconStyle: { width: 20, textAlign: 'center' },
+  lineLabel: { ...typography.caption, color: colors.textTertiary, width: 36 },
+  cropDot: { width: 14, height: 14, borderRadius: 7, marginLeft: 3, marginRight: 3 },
+  lineText: { ...typography.body, color: colors.textPrimary, flex: 1 },
   workTag: {
     paddingVertical: 2,
     paddingHorizontal: space.sm,
@@ -348,13 +453,53 @@ const styles = StyleSheet.create({
   },
   workTagText: { ...typography.caption, fontWeight: '600' },
 
-  watermark: {
-    marginHorizontal: space.lg,
-    marginTop: space.lg,
-    padding: space.md,
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderColor: colors.border,
+  dayPhotoRow: { marginBottom: space.sm },
+  dayPhoto: { width: 120, height: 90, borderRadius: 8, marginRight: space.xs },
+  dayCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space.xs },
+  viewBtn: {
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: radius.sm,
+    paddingVertical: 4,
+    paddingHorizontal: space.sm,
+    backgroundColor: '#E6F4EA',
   },
-  watermarkText: { ...typography.caption, color: colors.primary, fontWeight: '600' },
+  viewBtnText: { ...typography.caption, color: colors.primary, fontWeight: '600' },
+
+  modalOverlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: space.lg,
+    zIndex: 100,
+  },
+  modalContent: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    width: '100%',
+    maxHeight: '85%',
+    overflow: 'hidden',
+    flexDirection: 'column',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: space.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalTitle: { ...typography.bodyBold, color: colors.textPrimary },
+  modalClose: { fontSize: 20, color: colors.textTertiary },
+  modalCloseBtn: {
+    margin: space.lg,
+    marginTop: 0,
+    paddingVertical: space.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceMuted,
+    alignItems: 'center',
+  },
+  modalCloseBtnText: { ...typography.bodyBold, color: colors.textPrimary },
 });
