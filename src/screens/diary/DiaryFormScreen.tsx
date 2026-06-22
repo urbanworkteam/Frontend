@@ -203,8 +203,7 @@ export function DiaryFormScreen({ mode, diaryId, initialDate, initialData, onDel
         ext: extOf(asset.uri),
         sizeBytes: asset.fileSize ?? 0,
       });
-      const blob = await (await fetch(asset.uri)).blob();
-      await uploadToS3(ps.uploadUrl, blob, asset.mimeType ?? 'image/jpeg');
+      await uploadToS3(ps.uploadUrl, asset.uri, asset.mimeType ?? 'image/jpeg');
       setPhotos((s) => [...s, { key: ps.key, previewUrl: ps.publicUrl ?? asset.uri }]);
     } catch (err) {
       toast.error('사진 업로드에 실패했어요');

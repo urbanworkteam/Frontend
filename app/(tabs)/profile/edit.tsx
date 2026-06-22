@@ -101,8 +101,7 @@ export default function ProfileEditScreen() {
         ext: extOf(asset.uri),
         sizeBytes: asset.fileSize ?? 0,
       });
-      const blob = await (await fetch(asset.uri)).blob();
-      await uploadToS3(ps.uploadUrl, blob, asset.mimeType ?? 'image/jpeg');
+      await uploadToS3(ps.uploadUrl, asset.uri, asset.mimeType ?? 'image/jpeg');
       if (kind === 'profile_bg') {
         setBgKey(ps.key);
         setBgPreview(ps.publicUrl ?? asset.uri);
