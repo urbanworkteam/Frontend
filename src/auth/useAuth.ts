@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import { tokenStore } from './tokenStore';
 import { unregisterPushToken } from '@/notification/push';
+import { api, unwrap } from '@/api/client';
+import { ApiResponse } from '@/api/types';
+import { MyProfile } from '@/api/profile';
 
 export type AuthUser = {
   id: number;
@@ -26,12 +29,24 @@ export const useAuth = create<AuthState>((set) => ({
   user: null,
   hydrate: async () => {
     const access = await tokenStore.getAccess();
-    const user = access ? await tokenStore.getUser() : null;
-    set({ hydrated: true, isAuthed: !!access, user });
+    if (!access) {
+      set({ hydrated: true, isAuthed: false, user: null });
+      return;
+    }
+    try {
+      const res = await api.get<ApiResponse<MyProfile>>('/api/v1/me/profile');
+      const profile = await unwrap(Promise.resolve(res));
+      set({
+        hydrated: true,
+        isAuthed: true,
+        user: { id: profile.id, name: profile.farm.farmName, handle: profile.handle, onboarded: profile.onboarded },
+      });
+    } catch {
+      set({ hydrated: true, isAuthed: false, user: null });
+    }
   },
   signIn: async (tokens, user) => {
     await tokenStore.setTokens(tokens.accessToken, tokens.refreshToken);
-    await tokenStore.setUser(user);
     set({ isAuthed: true, user });
   },
   signOut: async () => {
