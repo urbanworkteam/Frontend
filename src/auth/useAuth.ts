@@ -26,10 +26,12 @@ export const useAuth = create<AuthState>((set) => ({
   user: null,
   hydrate: async () => {
     const access = await tokenStore.getAccess();
-    set({ hydrated: true, isAuthed: !!access });
+    const user = access ? await tokenStore.getUser() : null;
+    set({ hydrated: true, isAuthed: !!access, user });
   },
   signIn: async (tokens, user) => {
     await tokenStore.setTokens(tokens.accessToken, tokens.refreshToken);
+    await tokenStore.setUser(user);
     set({ isAuthed: true, user });
   },
   signOut: async () => {
