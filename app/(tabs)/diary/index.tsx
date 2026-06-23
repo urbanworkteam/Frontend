@@ -443,7 +443,9 @@ const styles = StyleSheet.create({
   modalPhotoRow: { padding: space.md, overflow: 'visible' },
   modalPhoto: { width: 240, height: 180, borderRadius: 8, marginRight: space.sm, overflow: 'hidden' },
   modalBody: { padding: space.lg, gap: space.md },
-  modalBodyScroll: { flex: 1 },
+  // 부모(modalContent)가 maxHeight 만 있고 고정 height 가 없어, flex:1 이면 본문이 0 으로 접혀 사라진다.
+  // flexShrink:1 = 내용만큼 커지되 maxHeight 초과 시에만 줄어들며 스크롤 (헤더/푸터 고정).
+  modalBodyScroll: { flexShrink: 1 },
   modalLine: { flexDirection: 'row', gap: space.md },
   modalLabel: { ...typography.caption, color: colors.textSecondary, width: 50 },
   modalValue: { ...typography.body, color: colors.textPrimary, flex: 1 },

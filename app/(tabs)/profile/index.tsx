@@ -290,7 +290,8 @@ export default function MyProfileScreen() {
                 <Text style={styles.modalClose}>✕</Text>
               </Pressable>
             </View>
-            <ScrollView style={{ flex: 1 }}>
+            {/* 부모 modalContent 가 maxHeight 만 있어(고정 height 없음) flex:1 이면 본문이 0 으로 접힘 → flexShrink:1 */}
+            <ScrollView style={{ flexShrink: 1 }}>
               {viewDiary.photos && viewDiary.photos.length > 0 ? (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ padding: space.md }}>
                   {viewDiary.photos.map((p) => (
