@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useContentHistory, useCredits, Platform } from '@/api/ai';
 import { Button } from '@/ui/components/Button';
+import { AppHeaderTitle } from '@/ui/components/AppHeader';
 import { colors, radius, shadow, space, typography } from '@/ui/tokens';
 
 export default function ContentHomeScreen() {
@@ -14,11 +15,7 @@ export default function ContentHomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* 상단 바 */}
-      <View style={styles.headerRow}>
-        <Text style={styles.headerBrand}>Farmily</Text>
-        <Text style={styles.headerSubtitle}>AI 콘텐츠</Text>
-      </View>
+      <AppHeaderTitle title="콘텐츠" />
 
       <ScrollView contentContainerStyle={{ padding: space.lg, gap: space.md, paddingBottom: space.xxl }}>
         {/* 크레딧 + 생성 버튼 */}
@@ -88,19 +85,6 @@ export default function ContentHomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bgPage },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: space.lg,
-    height: 52,
-    backgroundColor: '#F0F0F0',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  headerBrand: { ...typography.bodyBold, color: colors.textPrimary },
-  headerSubtitle: { ...typography.bodyBold, color: colors.textPrimary },
-
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { useMyPage } from '@/api/mypage';
 import { useLogout, useWithdraw } from '@/api/auth';
 import { Modal } from '@/ui/components/Modal';
+import { AppHeaderTitle } from '@/ui/components/AppHeader';
 import { colors, radius, shadow, space, typography } from '@/ui/tokens';
 import { toast } from '@/state/uiStore';
 
@@ -70,10 +71,7 @@ export default function MyPageScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.topBar}>
-        <Text style={styles.topBarBrand}>Farmily</Text>
-        <Text style={styles.topBarTitle}>마이페이지</Text>
-      </View>
+      <AppHeaderTitle title="마이페이지" />
 
       <ScrollView contentContainerStyle={{ padding: space.lg, gap: space.lg, paddingBottom: space.xxl }}>
         {/* 계정 정보 카드 */}
@@ -232,19 +230,6 @@ function NavRow({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bgPage },
-  topBar: {
-    flexDirection: 'row',
-    paddingHorizontal: space.lg,
-    height: 52,
-    backgroundColor: '#F0F0F0',
-    borderBottomWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  topBarBrand: { ...typography.bodyBold, color: colors.textPrimary },
-  topBarTitle: { ...typography.bodyBold, color: colors.textPrimary },
-
   // Account card
   accountCard: {
     backgroundColor: colors.surface,

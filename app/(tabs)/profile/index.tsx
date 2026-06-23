@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { QrModal } from '@/ui/components/QrModal';
+import { AppHeaderLogo, HeaderIconBtn, HeaderTextBtn } from '@/ui/components/AppHeader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -54,7 +55,6 @@ export default function MyProfileScreen() {
   });
   const [selected, setSelected] = useState<string>(todayStr());
   const [viewDiary, setViewDiary] = useState<DiaryResponse | null>(null);
-  const [showQr, setShowQr] = useState(false);
   const cal = useProfileCalendar(ym.year, ym.month);
 
   const workTypeLabelByCode = useMemo(
@@ -111,17 +111,16 @@ export default function MyProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.topBar}>
-        <Text style={styles.topBarHandle}>{handle ? `farmily.info/@${handle}` : 'Farmily'}</Text>
-        <View style={{ flexDirection: 'row', gap: space.sm }}>
-          <Pressable style={styles.editBtn} onPress={() => setShowQr(true)} hitSlop={8}>
-            <Ionicons name="qr-code-outline" size={16} color={colors.textPrimary} />
-          </Pressable>
-          <Pressable style={styles.editBtn} onPress={() => router.push('/(tabs)/profile/edit')} hitSlop={8}>
-            <Text style={styles.editBtnText}>명함 편집</Text>
-          </Pressable>
-        </View>
-      </View>
+      <AppHeaderLogo
+        right={
+          <>
+            <HeaderIconBtn onPress={() => setShowQr(true)}>
+              <Ionicons name="qr-code-outline" size={16} color={colors.textPrimary} />
+            </HeaderIconBtn>
+            <HeaderTextBtn label="명함 편집" onPress={() => router.push('/(tabs)/profile/edit')} />
+          </>
+        }
+      />
 
       <ScrollView contentContainerStyle={{ paddingBottom: space.xxl }}>
         <View style={styles.headerBg}>
@@ -273,13 +272,6 @@ export default function MyProfileScreen() {
 
       </ScrollView>
 
-      <QrModal
-        visible={showQr}
-        url={handle ? `https://farmily.info/@${handle}` : 'https://farmily.info'}
-        farmName={farmName}
-        onClose={() => setShowQr(false)}
-      />
-
       {/* 일지 보기 모달 */}
       {viewDiary ? (
         <Pressable style={styles.modalOverlay} onPress={() => setViewDiary(null)}>
@@ -341,27 +333,6 @@ export default function MyProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bgPage },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: space.lg,
-    height: 52,
-    backgroundColor: '#F0F0F0',
-    borderBottomWidth: 1,
-    borderColor: colors.border,
-  },
-  topBarHandle: { ...typography.bodyBold, color: colors.textPrimary },
-  editBtn: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.pill,
-    paddingVertical: space.xs,
-    paddingHorizontal: space.md,
-    backgroundColor: colors.surface,
-  },
-  editBtnText: { ...typography.bodyBold, color: colors.textPrimary },
-
   headerBg: {
     height: 180,
     backgroundColor: '#E6F4EA',
