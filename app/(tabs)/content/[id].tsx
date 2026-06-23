@@ -86,7 +86,7 @@ export default function ContentDetailScreen() {
 
   const saveAllImagesToGallery = async (urls: string[], kind: 'CARD' | 'STORE_IMAGE') => {
     if (!jobId || urls.length === 0) return;
-    if (!MediaLibrary || !FileSystem) {
+    if (!MediaLibrary || !ExpoFileSystem) {
       toast.info('웹에서는 갤러리 저장이 지원되지 않아요. 디바이스에서 시도해주세요.');
       return;
     }
