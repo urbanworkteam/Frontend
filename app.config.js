@@ -16,7 +16,9 @@ module.exports = ({ config }) => ({
     ...(config.plugins ?? []),
     [
       '@react-native-seoul/kakao-login',
-      { kakaoAppKey: process.env.EXPO_PUBLIC_KAKAO_NATIVE_KEY },
+      // 빈 문자열 fallback — 키 미설정 시 prebuild 가 strings.xml 단계에서 하드 크래시하지 않도록.
+      // 실제 빌드에서는 EAS 환경변수 EXPO_PUBLIC_KAKAO_NATIVE_KEY 가 주입됨.
+      { kakaoAppKey: process.env.EXPO_PUBLIC_KAKAO_NATIVE_KEY ?? '' },
     ],
     [
       'expo-build-properties',

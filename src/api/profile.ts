@@ -6,6 +6,9 @@ export type BlockType = 'CROP_INTRO' | 'STORY' | 'CALENDAR' | 'DIVIDER' | 'TEXT'
 export type SalesChannelCode = 'SMARTSTORE' | 'INSTAGRAM' | 'DAANGN';
 
 export type MyProfile = {
+  id: number;
+  handle: string | null;
+  onboarded: boolean;
   farm: {
     farmName: string | null;
     region: string | null;
