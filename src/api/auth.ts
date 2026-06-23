@@ -4,7 +4,10 @@ import { ApiResponse } from './types';
 import { tokenStore } from '@/auth/tokenStore';
 import { useAuth } from '@/auth/useAuth';
 
-export type KakaoLoginRequest = { code: string; redirectUri?: string };
+// 웹: 인가 코드(code) 경로 / 모바일: 네이티브 SDK 액세스 토큰(accessToken) 경로
+export type KakaoLoginRequest =
+  | { code: string; redirectUri?: string }
+  | { accessToken: string };
 export type AuthTokenResponse = {
   accessToken: string;
   refreshToken: string;

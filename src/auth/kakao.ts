@@ -11,19 +11,28 @@ export type KakaoTokenResult = {
   accessToken: string;
 };
 
+// 네이티브 모듈은 웹 번들에 포함되면 안 되므로 top-level import 금지 — 함수 내부에서 lazy require.
+// (dev client / EAS 빌드에서만 네이티브 모듈이 존재)
+function nativeKakao() {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return require('@react-native-seoul/kakao-login').default;
+}
+
+/**
+ * 모바일 네이티브 카카오 로그인. 카카오톡 앱(미설치 시 카카오 계정 웹뷰)으로 로그인하고
+ * 액세스 토큰을 반환한다. 백엔드는 이 토큰으로 `/v2/user/me` 를 조회해 JWT 를 발급한다.
+ */
 export async function loginWithKakao(): Promise<KakaoTokenResult> {
-  // 실제 코드 (네이티브 모듈 설치 후 활성화):
-  // import KakaoLogin from '@react-native-seoul/kakao-login';
-  // const r = await KakaoLogin.login();
-  // return { accessToken: r.accessToken };
-  throw new Error(
-    '카카오 SDK 미설치. `@react-native-seoul/kakao-login` 추가 + dev client 빌드 후 src/auth/kakao.ts 의 구현을 활성화하세요.',
-  );
+  const r = await nativeKakao().login();
+  return { accessToken: r.accessToken };
 }
 
 export async function logoutFromKakao(): Promise<void> {
-  // import KakaoLogin from '@react-native-seoul/kakao-login';
-  // await KakaoLogin.logout();
+  try {
+    await nativeKakao().logout();
+  } catch {
+    /* 이미 로그아웃 상태이거나 SDK 미초기화 — 무시 */
+  }
 }
 
 const KAKAO_STATE_KEY = 'kakao_oauth_state';
