@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 
 const ACCESS_KEY = 'farmily.accessToken';
 const REFRESH_KEY = 'farmily.refreshToken';
+const USER_KEY = 'farmily.user';
 
 // expo-secure-store has no web binding; fall back to localStorage so the app
 // boots in browser dev. Localstorage is not "secure" — only use on dev.
@@ -54,8 +55,17 @@ export const tokenStore = {
     await write(ACCESS_KEY, access);
     await write(REFRESH_KEY, refresh);
   },
+  async getUser(): Promise<{ id: number; name: string | null; handle: string | null; onboarded: boolean } | null> {
+    const raw = await read(USER_KEY);
+    if (!raw) return null;
+    try { return JSON.parse(raw); } catch { return null; }
+  },
+  async setUser(user: { id: number; name: string | null; handle: string | null; onboarded: boolean }): Promise<void> {
+    await write(USER_KEY, JSON.stringify(user));
+  },
   async clear(): Promise<void> {
     await remove(ACCESS_KEY);
     await remove(REFRESH_KEY);
+    await remove(USER_KEY);
   },
 };

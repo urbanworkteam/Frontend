@@ -8,9 +8,10 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { AppHeaderTitle, HeaderIconBtn } from '@/ui/components/AppHeader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { MonthCalendar } from '@/ui/components/MonthCalendar';
 import { useDiariesByDate, useDiaryCalendar, useWorkTypes } from '@/api/diary';
@@ -107,13 +108,14 @@ export default function DiaryHome() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.headerRow}>
-        <Text style={styles.brand}>Farmily</Text>
-        <Pressable style={styles.shareBtn} onPress={onShare} hitSlop={8}>
-          <Text style={styles.shareIcon}>↗</Text>
-          <Text style={styles.shareText}>공유</Text>
-        </Pressable>
-      </View>
+      <AppHeaderTitle
+        title="영농일지"
+        right={
+          <HeaderIconBtn onPress={onShare}>
+            <Ionicons name="share-outline" size={16} color={colors.textPrimary} />
+          </HeaderIconBtn>
+        }
+      />
 
       <ScrollView contentContainerStyle={{ padding: space.lg, gap: space.md, paddingBottom: space.xxl }}>
         <View style={styles.calendarBox}>
@@ -301,30 +303,6 @@ export default function DiaryHome() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bgPage },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: space.lg,
-    height: 52,
-    backgroundColor: '#F0F0F0',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  brand: { ...typography.bodyBold, color: colors.textPrimary },
-  shareBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.pill,
-    paddingVertical: space.xs,
-    paddingHorizontal: space.md,
-    backgroundColor: colors.surface,
-  },
-  shareIcon: { fontSize: 14, color: colors.textPrimary, lineHeight: 16 },
-  shareText: { ...typography.bodyBold, color: colors.textPrimary },
 
   calendarBox: {
     backgroundColor: colors.surface,
