@@ -103,8 +103,11 @@ export default function ContentDetailScreen() {
         const filename = `farmily-${jobId}-${i}.${ext}`;
         const { File, Paths } = ExpoFileSystem!;
         const dest = new File(Paths.cache, filename);
-        const file = await File.downloadFileAsync(url, dest);
-        if (file) await MediaLibrary!.createAssetAsync(file.uri);
+        // idempotent: 같은 파일명이 캐시에 남아 있어도(재시도 등) DestinationAlreadyExists 로
+        // 실패하지 않고 덮어쓴다.
+        const file = await File.downloadFileAsync(url, dest, { idempotent: true });
+        // SDK 56: createAssetAsync 함수형 API 는 deprecated(런타임 throw) → Asset.create 클래스 메서드 사용
+        if (file) await MediaLibrary!.Asset.create(file.uri);
       }
       try {
         await recordDownload.mutateAsync({ jobId, kind });
@@ -112,8 +115,9 @@ export default function ContentDetailScreen() {
         /* 카운트 실패는 silent — 사용자 저장은 이미 성공 */
       }
       toast.success(`${urls.length}장 갤러리에 저장됐어요`);
-    } catch {
-      toast.error('저장에 실패했어요');
+    } catch (e) {
+      console.warn('[saveAllImagesToGallery] failed', e);
+      toast.error(`저장에 실패했어요: ${(e as Error)?.message ?? e}`);
     } finally {
       setSaving(false);
     }
