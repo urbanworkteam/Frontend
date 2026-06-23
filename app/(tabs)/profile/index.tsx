@@ -55,6 +55,7 @@ export default function MyProfileScreen() {
   });
   const [selected, setSelected] = useState<string>(todayStr());
   const [viewDiary, setViewDiary] = useState<DiaryResponse | null>(null);
+  const [showQr, setShowQr] = useState(false);
   const cal = useProfileCalendar(ym.year, ym.month);
 
   const workTypeLabelByCode = useMemo(
@@ -271,6 +272,13 @@ export default function MyProfileScreen() {
         ) : null}
 
       </ScrollView>
+
+      <QrModal
+        visible={showQr}
+        url={handle ? `https://farmily.info/@${handle}` : 'https://farmily.info'}
+        farmName={farmName}
+        onClose={() => setShowQr(false)}
+      />
 
       {/* 일지 보기 모달 */}
       {viewDiary ? (
