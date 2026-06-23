@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { QrModal } from '@/ui/components/QrModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -53,6 +54,7 @@ export default function MyProfileScreen() {
   });
   const [selected, setSelected] = useState<string>(todayStr());
   const [viewDiary, setViewDiary] = useState<DiaryResponse | null>(null);
+  const [showQr, setShowQr] = useState(false);
   const cal = useProfileCalendar(ym.year, ym.month);
 
   const workTypeLabelByCode = useMemo(
@@ -111,9 +113,14 @@ export default function MyProfileScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.topBar}>
         <Text style={styles.topBarHandle}>{handle ? `farmily.info/@${handle}` : 'Farmily'}</Text>
-        <Pressable style={styles.editBtn} onPress={() => router.push('/(tabs)/profile/edit')} hitSlop={8}>
-          <Text style={styles.editBtnText}>명함 편집</Text>
-        </Pressable>
+        <View style={{ flexDirection: 'row', gap: space.sm }}>
+          <Pressable style={styles.editBtn} onPress={() => setShowQr(true)} hitSlop={8}>
+            <Ionicons name="qr-code-outline" size={16} color={colors.textPrimary} />
+          </Pressable>
+          <Pressable style={styles.editBtn} onPress={() => router.push('/(tabs)/profile/edit')} hitSlop={8}>
+            <Text style={styles.editBtnText}>명함 편집</Text>
+          </Pressable>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: space.xxl }}>
@@ -265,6 +272,13 @@ export default function MyProfileScreen() {
         ) : null}
 
       </ScrollView>
+
+      <QrModal
+        visible={showQr}
+        url={handle ? `https://farmily.info/@${handle}` : 'https://farmily.info'}
+        farmName={farmName}
+        onClose={() => setShowQr(false)}
+      />
 
       {/* 일지 보기 모달 */}
       {viewDiary ? (
