@@ -11,9 +11,24 @@ import { Button } from '@/ui/components/Button';
 import { colors, radius, space, typography } from '@/ui/tokens';
 import { toast } from '@/state/uiStore';
 
+// 카카오 로그인 사용자 취소를 일반 에러와 구분 (취소 시 토스트 띄우지 않음)
+function isUserCancel(e: unknown): boolean {
+  const code = (e as { code?: string })?.code ?? '';
+  const msg = (e as Error)?.message ?? '';
+  return /cancel/i.test(code) || /cancel|취소/i.test(msg);
+}
+
 export default function LoginScreen() {
   const kakaoLogin = useKakaoLogin();
   const [devCode, setDevCode] = useState('');
+
+  const routeAfterLogin = (data: { isNewUser: boolean; user: { onboarded: boolean } }) => {
+    if (data.isNewUser || !data.user.onboarded) {
+      router.replace('/(auth)/onboarding');
+    } else {
+      router.replace('/(tabs)/diary');
+    }
+  };
 
   const onKakao = async () => {
     // 웹: 인가 URL 로 풀 리디렉트 → 카카오 동의 → /oauth/kakao 콜백
@@ -26,12 +41,20 @@ export default function LoginScreen() {
       }
       return;
     }
-    // 모바일: 네이티브 SDK (현재 stub)
+    // 모바일: 네이티브 SDK → 액세스 토큰 → 백엔드 토큰 로그인
     try {
-      await loginWithKakao();
-      toast.info('카카오 로그인 흐름은 dev client 빌드 후 활성화됩니다.');
-    } catch {
-      toast.info('카카오 SDK 미연결: 아래 "개발자 코드" 입력으로 진행 가능');
+      const { accessToken } = await loginWithKakao();
+      kakaoLogin.mutate(
+        { accessToken },
+        {
+          onSuccess: routeAfterLogin,
+          onError: (e: unknown) => toast.error((e as Error)?.message ?? '로그인 실패'),
+        },
+      );
+    } catch (e) {
+      if (!isUserCancel(e)) {
+        toast.error((e as Error)?.message ?? '카카오 로그인에 실패했어요');
+      }
     }
   };
 
@@ -40,13 +63,7 @@ export default function LoginScreen() {
     kakaoLogin.mutate(
       { code: devCode.trim() },
       {
-        onSuccess: (data) => {
-          if (data.isNewUser || !data.user.onboarded) {
-            router.replace('/(auth)/onboarding');
-          } else {
-            router.replace('/(tabs)/diary');
-          }
-        },
+        onSuccess: routeAfterLogin,
         onError: (e: unknown) => {
           const msg = (e as Error)?.message ?? '로그인 실패';
           toast.error(msg);
