@@ -13,9 +13,10 @@ export type KakaoTokenResult = {
 
 // 네이티브 모듈은 웹 번들에 포함되면 안 되므로 top-level import 금지 — 함수 내부에서 lazy require.
 // (dev client / EAS 빌드에서만 네이티브 모듈이 존재)
+// 이 패키지는 default export 가 없고 named export(login/logout/…)만 제공하므로 모듈 객체를 그대로 사용.
 function nativeKakao() {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  return require('@react-native-seoul/kakao-login').default;
+  return require('@react-native-seoul/kakao-login') as typeof import('@react-native-seoul/kakao-login');
 }
 
 /**
