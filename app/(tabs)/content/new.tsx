@@ -52,6 +52,8 @@ export default function ContentNewScreen() {
   const [selectedDiaryId, setSelectedDiaryId] = useState<number | null>(null);
   const [withoutDiary, setWithoutDiary] = useState(false);
   const [extraPhotos, setExtraPhotos] = useState<PhotoSlot[]>([]);
+  // 스마트스토어 상세 카드는 이미지 슬롯 7개 → 추가 사진 최대 7장, 인스타는 3장
+  const maxExtra = platform === 'SMARTSTORE' ? 7 : 3;
   const [keywords, setKeywords] = useState('');
 
   const crops = useCrops();
@@ -83,8 +85,8 @@ export default function ContentNewScreen() {
   };
 
   const pickExtraPhoto = async () => {
-    if (extraPhotos.length >= 3) {
-      toast.info('추가 사진은 최대 3장까지 첨부할 수 있어요');
+    if (extraPhotos.length >= maxExtra) {
+      toast.info(`추가 사진은 최대 ${maxExtra}장까지 첨부할 수 있어요`);
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -282,7 +284,7 @@ export default function ContentNewScreen() {
                 </Pressable>
               </Section>
 
-              <Section title={`추가 사진 (${extraPhotos.length}/3 · 선택)`}>
+              <Section title={`추가 사진 (${extraPhotos.length}/${maxExtra} · 선택)`}>
                 <View style={styles.photoGrid}>
                   {extraPhotos.map((p) => (
                     <View key={p.key} style={styles.photoThumb}>
@@ -306,7 +308,7 @@ export default function ContentNewScreen() {
                       </Pressable>
                     </View>
                   ))}
-                  {extraPhotos.length < 3 ? (
+                  {extraPhotos.length < maxExtra ? (
                     <Pressable
                       style={styles.photoAdd}
                       onPress={pickExtraPhoto}
